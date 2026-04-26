@@ -1,0 +1,67 @@
+class ApiResponse<T> {
+  final bool? success;
+  final int? statusCode;
+  final String? message;
+  final String? devMessage;
+  final T? data;
+  final List<T>? dataList;
+
+  ApiResponse({
+    this.success,
+    this.statusCode,
+    this.message,
+    this.data,
+    this.dataList,
+    this.devMessage,
+  });
+
+  /// Whether the API call succeeded.
+  bool get isSuccess => success == true;
+
+  factory ApiResponse.fromJson(
+    Map<String, dynamic> res,
+    T Function(dynamic json)? fromJsonModel,
+  ) {
+    var rawData = res['data'];
+
+    T? parsedData;
+    List<T>? parsedList;
+
+    if (rawData != null && fromJsonModel != null) {
+      if (rawData is List) {
+        parsedList = rawData.map((e) => fromJsonModel(e)).toList();
+      } else {
+        parsedData = fromJsonModel(rawData);
+      }
+    }
+
+    // The API returns `"status": true/false` (boolean).
+    final rawStatus = res['status'];
+    bool? success;
+    int? statusCode;
+
+    if (rawStatus is bool) {
+      success = rawStatus;
+    } else if (rawStatus is int) {
+      statusCode = rawStatus;
+      success = rawStatus >= 200 && rawStatus < 300;
+    }
+
+    return ApiResponse(
+      success: success,
+      statusCode: statusCode,
+      message: res['message'] as String?,
+      devMessage: res['dev_message'] as String?,
+      data: parsedData,
+      dataList: parsedList,
+    );
+  }
+
+  Map<String, dynamic> toJson(dynamic Function(T model) toJsonModel) => {
+        'message': message,
+        'dev_message': devMessage,
+        'status': success,
+        'data': data != null ? toJsonModel(data as T) : null,
+        'datalist': dataList?.map((x) => toJsonModel(x)).toList(),
+      };
+}
