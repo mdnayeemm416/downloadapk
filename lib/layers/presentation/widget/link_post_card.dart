@@ -12,14 +12,14 @@ class LinkPostCard extends StatelessWidget {
   final VoidCallback? onUserTap;
 
   /// Seconds remaining on the like cooldown (0 = ready to like).
-  final int likeCooldownSeconds;
+  final double likeCooldownSeconds;
 
   const LinkPostCard({
     super.key,
     required this.link,
     required this.onLike,
     this.onUserTap,
-    this.likeCooldownSeconds = 0,
+    this.likeCooldownSeconds = 0.0,
   });
 
   @override
@@ -323,7 +323,7 @@ class LinkPostCard extends StatelessWidget {
                         if (isCoolingDown) ...[
                           const SizedBox(width: 6),
                           Text(
-                            '${likeCooldownSeconds}s',
+                            '${likeCooldownSeconds.toStringAsFixed(1)}s',
                             style: getBoldStyle(
                               fontSize: 12,
                               color: cs.primary.withValues(alpha: .7),

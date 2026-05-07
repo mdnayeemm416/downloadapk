@@ -57,7 +57,7 @@ class LinkQueueManager {
 
   static const _pendingKey = 'link_queue_pending';
   static const _activeKey = 'link_queue_active';
-  static const int maxSlots = 4;
+  static const int maxSlots = 3;
   static const int maxRetries = 2;
 
   late SharedPreferences _prefs;
@@ -88,12 +88,10 @@ class LinkQueueManager {
   int get pendingCount => _pending.length;
 
   /// Whether there are any links to process.
-  bool get hasWork =>
-      _slots.any((s) => s != null) || _pending.isNotEmpty;
+  bool get hasWork => _slots.any((s) => s != null) || _pending.isNotEmpty;
 
-  /// Generate a random delay between 5–10 seconds for page viewing.
-  Duration get randomViewDuration =>
-      Duration(seconds: 5 + _random.nextInt(6));
+  /// Generate a random delay between 10–20 seconds for page viewing.
+  Duration get randomViewDuration => Duration(seconds: 5 + _random.nextInt(16));
 
   /// Initialize from SharedPreferences cache on app start.
   Future<void> init() async {
@@ -107,6 +105,10 @@ class LinkQueueManager {
   /// Add a URL to the pending queue.
   /// [linkId] is the ID of the link, used to call the like API after viewing.
   void enqueue(String url, {String? linkId}) {
+    if (url.isEmpty || !url.startsWith('http')) {
+      debugPrint('[LinkQueue] ⚠️ Skipping invalid URL: $url');
+      return;
+    }
     _pending.add(_PendingUrl(url: url, linkId: linkId, retryCount: 0));
     _promoteToSlots();
     _persist();
@@ -151,7 +153,9 @@ class LinkQueueManager {
         _PendingUrl(url: url, linkId: linkId, retryCount: retries + 1),
       );
     } else {
-      debugPrint('[LinkQueue] 🚫 Slot $slotIndex exhausted retries, dropping: $url');
+      debugPrint(
+        '[LinkQueue] 🚫 Slot $slotIndex exhausted retries, dropping: $url',
+      );
       // Even if viewing failed, still call the like API since user already liked
       if (linkId != null && linkId.isNotEmpty) {
         _completedLinkController.add(linkId);
@@ -189,11 +193,13 @@ class LinkQueueManager {
 
   void _persist() {
     final pendingJson = _pending
-        .map((p) => jsonEncode({
-              'url': p.url,
-              'linkId': p.linkId,
-              'retryCount': p.retryCount,
-            }))
+        .map(
+          (p) => jsonEncode({
+            'url': p.url,
+            'linkId': p.linkId,
+            'retryCount': p.retryCount,
+          }),
+        )
         .toList();
     _prefs.setStringList(_pendingKey, pendingJson);
 
@@ -212,11 +218,13 @@ class LinkQueueManager {
     for (final raw in pendingRaw) {
       try {
         final json = jsonDecode(raw) as Map<String, dynamic>;
-        _pending.add(_PendingUrl(
-          url: json['url'] as String,
-          linkId: json['linkId'] as String?,
-          retryCount: (json['retryCount'] as int?) ?? 0,
-        ));
+        _pending.add(
+          _PendingUrl(
+            url: json['url'] as String,
+            linkId: json['linkId'] as String?,
+            retryCount: (json['retryCount'] as int?) ?? 0,
+          ),
+        );
       } catch (_) {
         _pending.add(_PendingUrl(url: raw, retryCount: 0));
       }

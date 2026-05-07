@@ -74,7 +74,12 @@ class _LoginScreenState extends State<LoginScreen>
             .hasManuallyLoggedOut();
         if (!hasManuallyLoggedOut) {
           // Attempt auto-login only if they haven't explicitly logged out
-          _loginBloc.add(LoginSubmitted(email: email, password: password));
+          // _loginBloc.add(LoginSubmitted(email: email, password: password));
+          Future.delayed(Duration(milliseconds: 300), () {
+            if (mounted) {
+              _loginBloc.add(LoginSubmitted(email: email, password: password));
+            }
+          });
         }
       }
     }
@@ -102,14 +107,17 @@ class _LoginScreenState extends State<LoginScreen>
       child: BlocListener<LoginBloc, LoginState>(
         listener: (context, state) {
           if (state.status == LoginStatus.success) {
-            context.read<ProfileBloc>().add(const LoadProfile());
-            showToast(
-              context: context,
-              message: 'Login Successful!',
-              toastificationType: ToastificationType.success,
-            );
-            navigateAndReplace(context, Routes.home);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              context.read<ProfileBloc>().add(const LoadProfile());
+              showToast(
+                context: context,
+                message: 'Login Successful!',
+                toastificationType: ToastificationType.success,
+              );
+              navigateAndReplace(context, Routes.home);
+            });
           }
+
           if (state.status == LoginStatus.failure &&
               state.errorMessage.isNotEmpty) {
             showToast(

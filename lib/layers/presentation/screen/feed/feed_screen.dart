@@ -319,9 +319,15 @@ class FeedScreen extends StatelessWidget {
                             key: ValueKey(link.id),
                             link: link,
                             likeCooldownSeconds: state.likeCooldownSeconds,
-                            onLike: () => context.read<FeedBloc>().add(
-                              ToggleLike(link.id ?? ''),
-                            ),
+                            onLike: () {
+                              Future.microtask(() {
+                                if (context.mounted) {
+                                  context.read<FeedBloc>().add(
+                                        ToggleLike(link.id ?? ''),
+                                      );
+                                }
+                              });
+                            },
                             onUserTap: () => Navigator.of(context).pushNamed(
                               '/user-profile',
                               arguments: link.userId ?? '',

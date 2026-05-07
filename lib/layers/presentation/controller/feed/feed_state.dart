@@ -10,7 +10,7 @@ class FeedState extends Equatable {
   final String errorMessage;
 
   /// Seconds remaining before the user can like again (0 = ready).
-  final int likeCooldownSeconds;
+  final double likeCooldownSeconds;
 
   /// How many likes have been given in the current streak.
   final int likeStreak;
@@ -30,7 +30,7 @@ class FeedState extends Equatable {
     this.currentPage = 1,
     this.hasMore = true,
     this.errorMessage = '',
-    this.likeCooldownSeconds = 0,
+    this.likeCooldownSeconds = 0.0,
     this.likeStreak = 0,
     this.pageWaitSeconds = 0,
     this.nextButtonClicks = 0,
@@ -43,7 +43,7 @@ class FeedState extends Equatable {
     int? currentPage,
     bool? hasMore,
     String? errorMessage,
-    int? likeCooldownSeconds,
+    double? likeCooldownSeconds,
     int? likeStreak,
     int? pageWaitSeconds,
     int? nextButtonClicks,

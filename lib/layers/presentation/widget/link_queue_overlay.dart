@@ -4,7 +4,7 @@ import 'package:adnetwork/core/services/link_queue_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-/// 4 WebView instances stacked vertically (15px each), loading URLs
+/// 2 WebView instances stacked vertically (35px each), loading URLs
 /// directly as top-level pages — no iframes, no X-Frame-Options issues.
 class LinkQueueOverlay extends StatelessWidget {
   const LinkQueueOverlay({super.key});
@@ -44,7 +44,7 @@ class LinkQueueOverlay extends StatelessWidget {
   }
 }
 
-/// A single 15px-tall WebView that loads a URL directly (top-level page).
+/// A single 35px-tall WebView that loads a URL directly (top-level page).
 class _SlotWebView extends StatefulWidget {
   final int slotIndex;
   final String url;
@@ -73,8 +73,19 @@ class _SlotWebViewState extends State<_SlotWebView> {
           onWebResourceError: _onWebResourceError,
           onHttpError: _onHttpError,
         ),
-      )
-      ..loadRequest(Uri.parse(widget.url));
+      );
+
+    try {
+      final uri = Uri.parse(widget.url);
+      _controller.loadRequest(uri);
+    } catch (e) {
+      debugPrint('[LinkQueue] ❌ Slot ${widget.slotIndex} Invalid URL: ${widget.url}');
+      _finished = true;
+      // Mark as error immediately so it's removed from queue
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        LinkQueueManager.instance.onSlotError(widget.slotIndex);
+      });
+    }
 
     debugPrint('[LinkQueue] ▶ Slot ${widget.slotIndex} loading: ${widget.url}');
 

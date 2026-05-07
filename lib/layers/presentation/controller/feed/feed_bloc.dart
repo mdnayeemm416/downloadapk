@@ -109,9 +109,9 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       likesCount: link.likesCount + 1,
     );
 
-    // Calculate cooldown: every 4th like → 3s, otherwise → 1s
+    // Calculate cooldown: every 4th like → 4s, otherwise → 2s
     final newStreak = state.likeStreak + 1;
-    final cooldown = (newStreak % 4 == 0) ? 3 : 1;
+    final double cooldown = (newStreak % 4 == 0) ? 4.0 : 1.5;
 
     emit(state.copyWith(
       links: links,
@@ -136,7 +136,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
   void _startLikeCooldown() {
     _likeCooldownTimer?.cancel();
     _likeCooldownTimer = Timer.periodic(
-      const Duration(seconds: 1),
+      const Duration(milliseconds: 100),
       (_) => add(const _TickLikeCooldown()),
     );
   }
@@ -145,10 +145,10 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     _TickLikeCooldown event,
     Emitter<FeedState> emit,
   ) {
-    final remaining = state.likeCooldownSeconds - 1;
+    final remaining = state.likeCooldownSeconds - 0.1;
     if (remaining <= 0) {
       _likeCooldownTimer?.cancel();
-      emit(state.copyWith(likeCooldownSeconds: 0));
+      emit(state.copyWith(likeCooldownSeconds: 0.0));
     } else {
       emit(state.copyWith(likeCooldownSeconds: remaining));
     }
@@ -178,7 +178,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     // 2. Increment click count
     final newClicks = state.nextButtonClicks + 1;
 
-    if (newClicks >= 30) {
+    if (newClicks >= 50) {
       // START COOLDOWN
       final cooldownSecs = 300; // 5 minutes
       final blockedUntil =
