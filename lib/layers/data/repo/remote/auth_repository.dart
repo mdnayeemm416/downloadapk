@@ -53,4 +53,13 @@ class AuthRepository {
       auth: false,
     );
   }
+
+  /// POST /auth/forgot-password
+  Future<ApiResponse<dynamic>> forgotPassword(String identifier) async {
+    return _api.post(
+      ApiEndpoints.forgotPassword,
+      body: {'identifier': identifier},
+      auth: false,
+    );
+  }
 }

@@ -293,6 +293,7 @@ class _TabBar extends StatelessWidget {
       case AdminTab.pending: return Icons.hourglass_top_rounded;
       case AdminTab.blocked: return Icons.block_rounded;
       case AdminTab.moderators: return Icons.verified_user_rounded;
+      case AdminTab.resetRequests: return Icons.vpn_key_rounded;
     }
   }
 
@@ -302,6 +303,7 @@ class _TabBar extends StatelessWidget {
       case AdminTab.pending: return 'Pending';
       case AdminTab.blocked: return 'Blocked';
       case AdminTab.moderators: return 'Moderators';
+      case AdminTab.resetRequests: return 'Reset Requests';
     }
   }
 }
@@ -480,6 +482,7 @@ class _UserManagementCard extends StatelessWidget {
       case 'unblock': bloc.add(UnblockUser(id)); break;
       case 'make-moderator': bloc.add(MakeModerator(id)); break;
       case 'remove-moderator': bloc.add(RemoveModerator(id)); break;
+      case 'reset-password': bloc.add(ResetUserPassword(id)); break;
     }
   }
 
@@ -509,6 +512,9 @@ class _UserManagementCard extends StatelessWidget {
     } else if (!isAdmin) {
       items.add(_menuItem('make-moderator', Icons.verified_user_rounded, 'Make Moderator', cs.secondary));
     }
+
+    items.add(const PopupMenuDivider());
+    items.add(_menuItem('reset-password', Icons.vpn_key_rounded, 'Reset Password', Colors.orange));
 
     return items;
   }
@@ -562,6 +568,16 @@ class _UserManagementCard extends StatelessWidget {
       ));
     }
 
+    if (user.resetRequested == 1) {
+      actions.add(const SizedBox(width: 8));
+      actions.add(_ActionChip(
+        label: 'Reset Pwd',
+        icon: Icons.vpn_key_rounded,
+        color: Colors.orange,
+        onTap: () => _handleAction(context, 'reset-password'),
+      ));
+    }
+
     return actions;
   }
 }
@@ -580,7 +596,10 @@ class _StatusBadge extends StatelessWidget {
     String label;
     Color color;
 
-    if (user.isBlocked == 1) {
+    if (user.resetRequested == 1) {
+      label = 'Reset Requested';
+      color = Colors.orange;
+    } else if (user.isBlocked == 1) {
       label = 'Blocked';
       color = cs.error;
     } else if (user.isApproved == 0) {

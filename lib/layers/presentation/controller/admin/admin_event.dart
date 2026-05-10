@@ -69,3 +69,14 @@ class SearchUsers extends AdminEvent {
   @override
   List<Object?> get props => [query];
 }
+
+class LoadResetRequests extends AdminEvent {
+  const LoadResetRequests();
+}
+
+class ResetUserPassword extends AdminEvent {
+  final String userId;
+  const ResetUserPassword(this.userId);
+  @override
+  List<Object?> get props => [userId];
+}

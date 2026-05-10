@@ -14,6 +14,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
     on<TogglePasswordVisibility>(_onTogglePasswordVisibility);
     on<ToggleRememberMe>(_onToggleRememberMe);
     on<InitializeRememberMe>(_onInitializeRememberMe);
+    on<ForgotPasswordSubmitted>(_onForgotPasswordSubmitted);
   }
 
   void _onInitializeRememberMe(InitializeRememberMe event, Emitter<LoginState> emit) {
@@ -91,5 +92,46 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
 
   void _onToggleRememberMe(ToggleRememberMe event, Emitter<LoginState> emit) {
     emit(state.copyWith(isRememberMe: !state.isRememberMe));
+  }
+
+  Future<void> _onForgotPasswordSubmitted(
+    ForgotPasswordSubmitted event,
+    Emitter<LoginState> emit,
+  ) async {
+    if (event.identifier.isEmpty) {
+      emit(state.copyWith(
+        status: LoginStatus.failure,
+        errorMessage: 'Please enter your email or username',
+      ));
+      return;
+    }
+
+    emit(state.copyWith(
+      status: LoginStatus.loading,
+      errorMessage: '',
+      forgotPasswordSuccessMessage: '',
+    ));
+
+    try {
+      final response = await authRepository.forgotPassword(event.identifier);
+
+      if (response.isSuccess) {
+        emit(state.copyWith(
+          status: LoginStatus.initial,
+          forgotPasswordSuccessMessage: response.message ??
+              'Password reset requested successfully. Please wait for an administrator.',
+        ));
+      } else {
+        emit(state.copyWith(
+          status: LoginStatus.failure,
+          errorMessage: response.message ?? 'Failed to request password reset',
+        ));
+      }
+    } catch (e) {
+      emit(state.copyWith(
+        status: LoginStatus.failure,
+        errorMessage: e.toString(),
+      ));
+    }
   }
 }

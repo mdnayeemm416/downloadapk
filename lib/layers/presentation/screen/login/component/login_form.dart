@@ -132,7 +132,7 @@ class LoginForm extends StatelessWidget {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () {},
+                      onTap: () => _showForgotPasswordDialog(context),
                       child: Text(
                         'Forgot Password?',
                         style: getMediumStyle(
@@ -149,6 +149,10 @@ class LoginForm extends StatelessWidget {
                 if (state.status == LoginStatus.failure &&
                     state.errorMessage.isNotEmpty)
                   _buildError(colorScheme, state.errorMessage),
+
+                // Success (Forgot Password)
+                if (state.forgotPasswordSuccessMessage.isNotEmpty)
+                  _buildSuccess(colorScheme, state.forgotPasswordSuccessMessage),
 
                 // Login Button
                 GradientButton(
@@ -264,6 +268,73 @@ class LoginForm extends StatelessWidget {
               msg,
               style: getRegularStyle(fontSize: 12, color: cs.error),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _buildSuccess(ColorScheme cs, String msg) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: .1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.green.withValues(alpha: .3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_outline_rounded,
+              size: 18, color: Colors.green),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              msg,
+              style: getRegularStyle(fontSize: 12, color: Colors.green),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showForgotPasswordDialog(BuildContext context) {
+    final controller = TextEditingController(text: emailController.text);
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Forgot Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Enter your email or username to request a password reset from an administrator.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Email or Username',
+                hintText: 'Enter identifier',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              context.read<LoginBloc>().add(
+                    ForgotPasswordSubmitted(controller.text.trim()),
+                  );
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('Request Reset'),
           ),
         ],
       ),

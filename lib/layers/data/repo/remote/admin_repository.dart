@@ -100,4 +100,28 @@ class AdminRepository {
           (json as Map<String, dynamic>)['user'] as Map<String, dynamic>),
     );
   }
+
+  /// PATCH /admin/users/:id/reset-password
+  Future<ApiResponse<UserModel>> resetPassword(String userId) async {
+    return _api.patch<UserModel>(
+      ApiEndpoints.adminResetPassword(userId),
+      fromJsonModel: (json) => UserModel.fromJson(
+          (json as Map<String, dynamic>)['user'] as Map<String, dynamic>),
+    );
+  }
+
+  /// GET /admin/users/reset-requests
+  Future<ApiResponse<UserModel>> getResetRequests({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    return _api.get<UserModel>(
+      ApiEndpoints.adminResetRequests,
+      queryParams: {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      },
+      fromJsonModel: (json) => UserModel.fromJson(json as Map<String, dynamic>),
+    );
+  }
 }

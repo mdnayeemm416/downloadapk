@@ -33,18 +33,24 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
     // Listen for completed link viewings from the WebView queue
     // and fire the like API at that point.
-    _queueCompletionSub =
-        LinkQueueManager.instance.completedLinkStream.listen(_onLinkViewed);
+    _queueCompletionSub = LinkQueueManager.instance.completedLinkStream.listen(
+      _onLinkViewed,
+    );
   }
 
   /// Called when a link has been fully viewed in the WebView.
   /// Now it's safe to call the like API.
   void _onLinkViewed(String linkId) {
-    linkRepository.toggleLike(linkId).then((_) {
-      debugPrint('[FeedBloc] 👍 Like API called after viewing: $linkId');
-    }, onError: (e) {
-      debugPrint('[FeedBloc] ❌ Like API failed for $linkId: $e');
-    });
+    linkRepository
+        .toggleLike(linkId)
+        .then(
+          (_) {
+            debugPrint('[FeedBloc] 👍 Like API called after viewing: $linkId');
+          },
+          onError: (e) {
+            debugPrint('[FeedBloc] ❌ Like API failed for $linkId: $e');
+          },
+        );
   }
 
   // ── Load Feed ──
@@ -68,25 +74,29 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       final response = await linkRepository.getGlobalFeed();
 
       if (response.isSuccess) {
-        final links = response.dataList ??
+        final links =
+            response.dataList ??
             (response.data != null ? [response.data!] : <LinkModel>[]);
-        emit(state.copyWith(
-          status: FeedStatus.loaded,
-          links: links,
-          currentPage: 1,
-          hasMore: links.length >= 10,
-        ));
+        emit(
+          state.copyWith(
+            status: FeedStatus.loaded,
+            links: links,
+            currentPage: 1,
+            hasMore: links.length >= 10,
+          ),
+        );
       } else {
-        emit(state.copyWith(
-          status: FeedStatus.error,
-          errorMessage: response.message ?? 'Failed to load feed',
-        ));
+        emit(
+          state.copyWith(
+            status: FeedStatus.error,
+            errorMessage: response.message ?? 'Failed to load feed',
+          ),
+        );
       }
     } catch (e) {
-      emit(state.copyWith(
-        status: FeedStatus.error,
-        errorMessage: e.toString(),
-      ));
+      emit(
+        state.copyWith(status: FeedStatus.error, errorMessage: e.toString()),
+      );
     }
   }
 
@@ -104,20 +114,19 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     final link = links[idx];
     if (link.isLiked) return; // Prevent unliking once liked
 
-    links[idx] = link.copyWith(
-      isLiked: true,
-      likesCount: link.likesCount + 1,
-    );
+    links[idx] = link.copyWith(isLiked: true, likesCount: link.likesCount + 1);
 
-    // Calculate cooldown: every 4th like → 4s, otherwise → 2s
+    // Calculate cooldown: every 4th like → 4s, otherwise → 1s
     final newStreak = state.likeStreak + 1;
-    final double cooldown = (newStreak % 4 == 0) ? 4.0 : 1.5;
+    final int cooldown = (newStreak % 4 == 0) ? 4 : 1;
 
-    emit(state.copyWith(
-      links: links,
-      likeStreak: newStreak,
-      likeCooldownSeconds: cooldown,
-    ));
+    emit(
+      state.copyWith(
+        links: links,
+        likeStreak: newStreak,
+        likeCooldownSeconds: cooldown,
+      ),
+    );
 
     // Start the cooldown countdown timer
     _startLikeCooldown();
@@ -136,19 +145,16 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
   void _startLikeCooldown() {
     _likeCooldownTimer?.cancel();
     _likeCooldownTimer = Timer.periodic(
-      const Duration(milliseconds: 100),
+      const Duration(seconds: 1),
       (_) => add(const _TickLikeCooldown()),
     );
   }
 
-  void _onTickLikeCooldown(
-    _TickLikeCooldown event,
-    Emitter<FeedState> emit,
-  ) {
-    final remaining = state.likeCooldownSeconds - 0.1;
+  void _onTickLikeCooldown(_TickLikeCooldown event, Emitter<FeedState> emit) {
+    final remaining = state.likeCooldownSeconds - 1;
     if (remaining <= 0) {
       _likeCooldownTimer?.cancel();
-      emit(state.copyWith(likeCooldownSeconds: 0.0));
+      emit(state.copyWith(likeCooldownSeconds: 0));
     } else {
       emit(state.copyWith(likeCooldownSeconds: remaining));
     }
@@ -188,20 +194,16 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('feed_next_blocked_until', blockedUntil);
 
-      emit(state.copyWith(
-        nextButtonClicks: 0,
-        nextCooldownSeconds: cooldownSecs,
-      ));
+      emit(
+        state.copyWith(nextButtonClicks: 0, nextCooldownSeconds: cooldownSecs),
+      );
       _startNextCooldown();
       return;
     }
 
     _isRefresh = false;
     _pendingPage = event.page;
-    emit(state.copyWith(
-      pageWaitSeconds: 4,
-      nextButtonClicks: newClicks,
-    ));
+    emit(state.copyWith(pageWaitSeconds: 4, nextButtonClicks: newClicks));
     _startPageWait();
   }
 
@@ -215,10 +217,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     );
   }
 
-  void _onTickNextCooldown(
-    _TickNextCooldown event,
-    Emitter<FeedState> emit,
-  ) {
+  void _onTickNextCooldown(_TickNextCooldown event, Emitter<FeedState> emit) {
     final remaining = state.nextCooldownSeconds - 1;
     if (remaining <= 0) {
       _nextCooldownTimer?.cancel();
@@ -266,25 +265,29 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       final response = await linkRepository.getGlobalFeed();
 
       if (response.isSuccess) {
-        final links = response.dataList ??
+        final links =
+            response.dataList ??
             (response.data != null ? [response.data!] : <LinkModel>[]);
-        emit(state.copyWith(
-          status: FeedStatus.loaded,
-          links: links,
-          currentPage: isRefresh ? 1 : page,
-          hasMore: links.length >= 10,
-        ));
+        emit(
+          state.copyWith(
+            status: FeedStatus.loaded,
+            links: links,
+            currentPage: isRefresh ? 1 : page,
+            hasMore: links.length >= 10,
+          ),
+        );
       } else {
-        emit(state.copyWith(
-          status: FeedStatus.error,
-          errorMessage: response.message ?? 'Failed to load page',
-        ));
+        emit(
+          state.copyWith(
+            status: FeedStatus.error,
+            errorMessage: response.message ?? 'Failed to load page',
+          ),
+        );
       }
     } catch (e) {
-      emit(state.copyWith(
-        status: FeedStatus.error,
-        errorMessage: e.toString(),
-      ));
+      emit(
+        state.copyWith(status: FeedStatus.error, errorMessage: e.toString()),
+      );
     }
   }
 
@@ -300,11 +303,13 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
       if (response.isSuccess) {
         final newLinks = response.dataList ?? <LinkModel>[];
-        emit(state.copyWith(
-          links: [...state.links, ...newLinks],
-          currentPage: nextPage,
-          hasMore: newLinks.length >= 10,
-        ));
+        emit(
+          state.copyWith(
+            links: [...state.links, ...newLinks],
+            currentPage: nextPage,
+            hasMore: newLinks.length >= 10,
+          ),
+        );
       }
     } catch (_) {
       // Silently fail on load more

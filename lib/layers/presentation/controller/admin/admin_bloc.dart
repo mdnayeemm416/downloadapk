@@ -20,6 +20,8 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     on<RemoveModerator>(_onRemoveModerator);
     on<ChangeTab>(_onChangeTab);
     on<SearchUsers>(_onSearch);
+    on<LoadResetRequests>(_onLoadResetRequests);
+    on<ResetUserPassword>(_onResetPassword);
   }
 
   Future<void> _onLoadAll(LoadAllUsers event, Emitter<AdminState> emit) async {
@@ -193,6 +195,66 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     }
   }
 
+  Future<void> _onLoadResetRequests(
+    LoadResetRequests event,
+    Emitter<AdminState> emit,
+  ) async {
+    emit(state.copyWith(status: AdminStatus.loading));
+
+    try {
+      final response = await adminRepository.getResetRequests();
+
+      if (response.isSuccess) {
+        final users = response.dataList ?? <UserModel>[];
+        emit(state.copyWith(
+          status: AdminStatus.loaded,
+          resetRequestedUsers: users,
+        ));
+      } else {
+        emit(state.copyWith(
+          status: AdminStatus.error,
+          errorMessage: response.message ?? 'Failed to load reset requests',
+        ));
+      }
+    } catch (e) {
+      emit(state.copyWith(
+        status: AdminStatus.error,
+        errorMessage: e.toString(),
+      ));
+    }
+  }
+
+  Future<void> _onResetPassword(
+    ResetUserPassword event,
+    Emitter<AdminState> emit,
+  ) async {
+    emit(state.copyWith(
+        actionUserId: event.userId, actionType: 'reset-password'));
+    try {
+      final response = await adminRepository.resetPassword(event.userId);
+      if (response.isSuccess) {
+        _updateUserInList(emit, event.userId, resetRequested: 0);
+        // Also remove from resetRequestedUsers list if it exists there
+        final resetUsers = state.resetRequestedUsers
+            .where((u) => u.id != event.userId)
+            .toList();
+        emit(state.copyWith(
+            resetRequestedUsers: resetUsers,
+            successMessage: 'Password reset successfully to 123456',
+            actionUserId: '',
+            actionType: ''));
+      } else {
+        emit(state.copyWith(
+            errorMessage: response.message ?? 'Failed',
+            actionUserId: '',
+            actionType: ''));
+      }
+    } catch (e) {
+      emit(state.copyWith(
+          errorMessage: e.toString(), actionUserId: '', actionType: ''));
+    }
+  }
+
   void _onChangeTab(ChangeTab event, Emitter<AdminState> emit) {
     final filtered = _filterByTab(state.allUsers, event.tab);
     emit(state.copyWith(currentTab: event.tab, filteredUsers: filtered, searchQuery: ''));
@@ -221,6 +283,8 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
         return users.where((u) => u.isBlocked == 1).toList();
       case AdminTab.moderators:
         return users.where((u) => u.role == 'moderator').toList();
+      case AdminTab.resetRequests:
+        return users.where((u) => u.resetRequested == 1).toList();
     }
   }
 
@@ -229,6 +293,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     String userId, {
     int? isApproved,
     int? isBlocked,
+    int? resetRequested,
     String? role,
   }) {
     final allUsers = state.allUsers.map((u) {
@@ -236,6 +301,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
         return u.copyWith(
           isApproved: isApproved ?? u.isApproved,
           isBlocked: isBlocked ?? u.isBlocked,
+          resetRequested: resetRequested ?? u.resetRequested,
           role: role ?? u.role,
         );
       }

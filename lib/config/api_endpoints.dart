@@ -6,6 +6,7 @@ class ApiEndpoints {
   // ──────────────────────────── Auth ────────────────────────────
   static const String register = '/api/auth/register';
   static const String login = '/api/auth/login';
+  static const String forgotPassword = '/api/auth/forgot-password';
 
   // ──────────────────────────── Users ───────────────────────────
   static const String myScore = '/api/users/me/score';
@@ -39,6 +40,9 @@ class ApiEndpoints {
       '/api/admin/users/$id/make-moderator';
   static String adminRemoveModerator(String id) =>
       '/api/admin/users/$id/remove-moderator';
+  static String adminResetPassword(String id) =>
+      '/api/admin/users/$id/reset-password';
+  static const String adminResetRequests = '/api/admin/users/reset-requests';
 
   // ──────────────────────────── Notices ───────────────────────────
   static const String notices = '/api/notices';

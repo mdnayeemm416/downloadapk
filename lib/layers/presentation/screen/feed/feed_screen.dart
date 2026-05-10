@@ -237,46 +237,44 @@ class FeedScreen extends StatelessWidget {
                       if (stats == null) return const SizedBox.shrink();
                       return Padding(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        child: RepaintBoundary(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cs.primaryContainer.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: cs.primary.withValues(alpha: 0.12),
                             ),
-                            decoration: BoxDecoration(
-                              color: cs.primaryContainer.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: cs.primary.withValues(alpha: 0.12),
+                          ),
+                          child: Row(
+                            children: [
+                              _StatItem(
+                                icon: Icons.thumb_up_alt_rounded,
+                                label: 'Given',
+                                value: '${stats.likesGiven}',
+                                color: cs.primary,
+                                cs: cs,
                               ),
-                            ),
-                            child: Row(
-                              children: [
-                                _StatItem(
-                                  icon: Icons.thumb_up_alt_rounded,
-                                  label: 'Given',
-                                  value: '${stats.likesGiven}',
-                                  color: cs.primary,
-                                  cs: cs,
-                                ),
-                                _verticalDivider(cs),
-                                _StatItem(
-                                  icon: Icons.favorite_rounded,
-                                  label: 'Received',
-                                  value: '${stats.likesReceived}',
-                                  color: cs.error,
-                                  cs: cs,
-                                ),
-                                _verticalDivider(cs),
-                                _StatItem(
-                                  icon: Icons.today_rounded,
-                                  label: 'Today',
-                                  value: '${stats.likesToday}',
-                                  color: cs.secondary,
-                                  cs: cs,
-                                ),
-                              ],
-                            ),
+                              _verticalDivider(cs),
+                              _StatItem(
+                                icon: Icons.favorite_rounded,
+                                label: 'Received',
+                                value: '${stats.likesReceived}',
+                                color: cs.error,
+                                cs: cs,
+                              ),
+                              _verticalDivider(cs),
+                              _StatItem(
+                                icon: Icons.today_rounded,
+                                label: 'Today',
+                                value: '${stats.likesToday}',
+                                color: cs.secondary,
+                                cs: cs,
+                              ),
+                            ],
                           ),
                         ),
                       );
@@ -311,35 +309,27 @@ class FeedScreen extends StatelessWidget {
                   ),
                 if (state.links.isNotEmpty)
                   SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final link = state.links[index];
-                        return RepaintBoundary(
-                          child: LinkPostCard(
-                            key: ValueKey(link.id),
-                            link: link,
-                            likeCooldownSeconds: state.likeCooldownSeconds,
-                            onLike: () {
-                              Future.microtask(() {
-                                if (context.mounted) {
-                                  context.read<FeedBloc>().add(
-                                        ToggleLike(link.id ?? ''),
-                                      );
-                                }
-                              });
-                            },
-                            onUserTap: () => Navigator.of(context).pushNamed(
-                              '/user-profile',
-                              arguments: link.userId ?? '',
-                            ),
-                          ),
-                        );
-                      },
-                      childCount: state.links.length,
-                      addAutomaticKeepAlives: false,
-                      addRepaintBoundaries:
-                          false, // we add our own RepaintBoundary
-                    ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final link = state.links[index];
+                      return LinkPostCard(
+                        key: ValueKey(link.id),
+                        link: link,
+                        likeCooldownSeconds: state.likeCooldownSeconds,
+                        onLike: () {
+                          Future.microtask(() {
+                            if (context.mounted) {
+                              context.read<FeedBloc>().add(
+                                ToggleLike(link.id ?? ''),
+                              );
+                            }
+                          });
+                        },
+                        onUserTap: () => Navigator.of(context).pushNamed(
+                          '/user-profile',
+                          arguments: link.userId ?? '',
+                        ),
+                      );
+                    }, childCount: state.links.length),
                   ),
 
                 // ── Notices Section ──

@@ -12,14 +12,14 @@ class LinkPostCard extends StatelessWidget {
   final VoidCallback? onUserTap;
 
   /// Seconds remaining on the like cooldown (0 = ready to like).
-  final double likeCooldownSeconds;
+  final int likeCooldownSeconds;
 
   const LinkPostCard({
     super.key,
     required this.link,
     required this.onLike,
     this.onUserTap,
-    this.likeCooldownSeconds = 0.0,
+    this.likeCooldownSeconds = 0,
   });
 
   @override
@@ -294,15 +294,15 @@ class LinkPostCard extends StatelessWidget {
                       color: link.isLiked
                           ? cs.error.withValues(alpha: .08)
                           : isCoolingDown
-                              ? cs.onSurface.withValues(alpha: .06)
-                              : cs.onSurface.withValues(alpha: .04),
+                          ? cs.onSurface.withValues(alpha: .06)
+                          : cs.onSurface.withValues(alpha: .04),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color: link.isLiked
                             ? cs.error.withValues(alpha: .2)
                             : isCoolingDown
-                                ? cs.primary.withValues(alpha: .15)
-                                : cs.onSurface.withValues(alpha: .1),
+                            ? cs.primary.withValues(alpha: .15)
+                            : cs.onSurface.withValues(alpha: .1),
                       ),
                     ),
                     child: Row(
@@ -316,14 +316,14 @@ class LinkPostCard extends StatelessWidget {
                           color: link.isLiked
                               ? cs.error
                               : isCoolingDown
-                                  ? cs.onSurface.withValues(alpha: .25)
-                                  : cs.onSurface.withValues(alpha: .45),
+                              ? cs.onSurface.withValues(alpha: .25)
+                              : cs.onSurface.withValues(alpha: .45),
                         ),
                         // Show countdown when cooling down
                         if (isCoolingDown) ...[
                           const SizedBox(width: 6),
                           Text(
-                            '${likeCooldownSeconds.toStringAsFixed(1)}s',
+                            '${likeCooldownSeconds}s',
                             style: getBoldStyle(
                               fontSize: 12,
                               color: cs.primary.withValues(alpha: .7),

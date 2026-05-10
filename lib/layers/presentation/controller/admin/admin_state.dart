@@ -2,13 +2,14 @@ part of 'admin_bloc.dart';
 
 enum AdminStatus { initial, loading, loaded, error }
 
-enum AdminTab { all, pending, blocked, moderators }
+enum AdminTab { all, pending, blocked, moderators, resetRequests }
 
 class AdminState extends Equatable {
   final AdminStatus status;
   final List<UserModel> allUsers;
   final List<UserModel> filteredUsers;
   final List<UserModel> pendingUsers;
+  final List<UserModel> resetRequestedUsers;
   final AdminTab currentTab;
   final String searchQuery;
   final String errorMessage;
@@ -21,6 +22,7 @@ class AdminState extends Equatable {
     this.allUsers = const [],
     this.filteredUsers = const [],
     this.pendingUsers = const [],
+    this.resetRequestedUsers = const [],
     this.currentTab = AdminTab.all,
     this.searchQuery = '',
     this.errorMessage = '',
@@ -34,6 +36,7 @@ class AdminState extends Equatable {
     List<UserModel>? allUsers,
     List<UserModel>? filteredUsers,
     List<UserModel>? pendingUsers,
+    List<UserModel>? resetRequestedUsers,
     AdminTab? currentTab,
     String? searchQuery,
     String? errorMessage,
@@ -46,6 +49,7 @@ class AdminState extends Equatable {
       allUsers: allUsers ?? this.allUsers,
       filteredUsers: filteredUsers ?? this.filteredUsers,
       pendingUsers: pendingUsers ?? this.pendingUsers,
+      resetRequestedUsers: resetRequestedUsers ?? this.resetRequestedUsers,
       currentTab: currentTab ?? this.currentTab,
       searchQuery: searchQuery ?? this.searchQuery,
       errorMessage: errorMessage ?? this.errorMessage,
@@ -61,6 +65,7 @@ class AdminState extends Equatable {
         allUsers,
         filteredUsers,
         pendingUsers,
+        resetRequestedUsers,
         currentTab,
         searchQuery,
         errorMessage,

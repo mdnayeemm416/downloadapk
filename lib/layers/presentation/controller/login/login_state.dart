@@ -7,12 +7,14 @@ class LoginState extends Equatable {
   final bool isPasswordVisible;
   final bool isRememberMe;
   final String errorMessage;
+  final String forgotPasswordSuccessMessage;
 
   const LoginState({
     this.status = LoginStatus.initial,
     this.isPasswordVisible = false,
     this.isRememberMe = false,
     this.errorMessage = '',
+    this.forgotPasswordSuccessMessage = '',
   });
 
   LoginState copyWith({
@@ -20,12 +22,15 @@ class LoginState extends Equatable {
     bool? isPasswordVisible,
     bool? isRememberMe,
     String? errorMessage,
+    String? forgotPasswordSuccessMessage,
   }) {
     return LoginState(
       status: status ?? this.status,
       isPasswordVisible: isPasswordVisible ?? this.isPasswordVisible,
       isRememberMe: isRememberMe ?? this.isRememberMe,
       errorMessage: errorMessage ?? this.errorMessage,
+      forgotPasswordSuccessMessage:
+          forgotPasswordSuccessMessage ?? this.forgotPasswordSuccessMessage,
     );
   }
 
@@ -35,5 +40,6 @@ class LoginState extends Equatable {
         isPasswordVisible,
         isRememberMe,
         errorMessage,
+        forgotPasswordSuccessMessage,
       ];
 }

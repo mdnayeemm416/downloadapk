@@ -91,7 +91,7 @@ class LinkQueueManager {
   bool get hasWork => _slots.any((s) => s != null) || _pending.isNotEmpty;
 
   /// Generate a random delay between 10–20 seconds for page viewing.
-  Duration get randomViewDuration => Duration(seconds: 5 + _random.nextInt(16));
+  Duration get randomViewDuration => Duration(seconds: 5 + _random.nextInt(6));
 
   /// Initialize from SharedPreferences cache on app start.
   Future<void> init() async {

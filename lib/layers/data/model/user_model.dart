@@ -9,6 +9,7 @@ class UserModel {
   final String? role;
   final int? isApproved;
   final int? isBlocked;
+  final int? resetRequested;
   int followersCount;
   int followingCount;
   int linkCount;
@@ -26,6 +27,7 @@ class UserModel {
     this.role,
     this.isApproved,
     this.isBlocked,
+    this.resetRequested,
     this.followersCount = 0,
     this.followingCount = 0,
     this.linkCount = 0,
@@ -45,6 +47,7 @@ class UserModel {
       role: json['role'] as String?,
       isApproved: json['is_approved'] as int?,
       isBlocked: json['is_blocked'] as int?,
+      resetRequested: json['reset_requested'] as int?,
       followersCount: (json['follower_count'] as int?) ?? (json['followers_count'] as int?) ?? 0,
       followingCount: (json['following_count'] as int?) ?? 0,
       linkCount: (json['link_count'] as int?) ?? 0,
@@ -68,6 +71,7 @@ class UserModel {
     'role': role,
     'is_approved': isApproved,
     'is_blocked': isBlocked,
+    'reset_requested': resetRequested,
     'followers_count': followersCount,
     'following_count': followingCount,
     'link_count': linkCount,
@@ -85,6 +89,7 @@ class UserModel {
     String? role,
     int? isApproved,
     int? isBlocked,
+    int? resetRequested,
     int? followersCount,
     int? followingCount,
     int? linkCount,
@@ -102,6 +107,7 @@ class UserModel {
       role: role ?? this.role,
       isApproved: isApproved ?? this.isApproved,
       isBlocked: isBlocked ?? this.isBlocked,
+      resetRequested: resetRequested ?? this.resetRequested,
       followersCount: followersCount ?? this.followersCount,
       followingCount: followingCount ?? this.followingCount,
       linkCount: linkCount ?? this.linkCount,
