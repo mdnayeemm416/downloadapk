@@ -184,7 +184,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     // 2. Increment click count
     final newClicks = state.nextButtonClicks + 1;
 
-    if (newClicks >= 50) {
+    if (newClicks >= 30) {
       // START COOLDOWN
       final cooldownSecs = 300; // 5 minutes
       final blockedUntil =

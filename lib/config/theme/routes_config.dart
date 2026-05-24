@@ -5,6 +5,7 @@ import 'package:adnetwork/layers/presentation/screen/contact/contact_screen.dart
 import 'package:adnetwork/layers/presentation/screen/home/home_page.dart';
 import 'package:adnetwork/layers/presentation/screen/login/login_screen.dart';
 import 'package:adnetwork/layers/presentation/screen/profile/user_profile_screen.dart';
+import 'package:adnetwork/layers/presentation/screen/settings/change_password_screen.dart';
 import 'package:adnetwork/layers/presentation/screen/settings/faq_screen.dart';
 import 'package:adnetwork/layers/presentation/screen/settings/privacy_policy_screen.dart';
 import 'package:adnetwork/layers/presentation/screen/settings/settings_screen.dart';
@@ -26,6 +27,7 @@ class Routes {
   static const String about = '/about';
   static const String contact = '/contact';
   static const String settings = '/settings';
+  static const String changePassword = '/change-password';
   static const String stats = '/stats';
   static const String faq = '/faq';
   static const String privacy = '/privacy';
@@ -60,6 +62,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const ContactScreen());
       case Routes.settings:
         return MaterialPageRoute(builder: (_) => const SettingsScreen());
+      case Routes.changePassword:
+        return MaterialPageRoute(builder: (_) => const ChangePasswordScreen());
       case Routes.stats:
         return MaterialPageRoute(builder: (_) => const StatsScreen());
       case Routes.faq:

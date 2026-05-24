@@ -3,12 +3,16 @@
 class ApiEndpoints {
   ApiEndpoints._();
 
+  // ──────────────────────────── App Updates ───────────────────────
+  static const String appUpdates = '/api/app-updates/latest';
+
   // ──────────────────────────── Auth ────────────────────────────
   static const String register = '/api/auth/register';
   static const String login = '/api/auth/login';
   static const String forgotPassword = '/api/auth/forgot-password';
 
   // ──────────────────────────── Users ───────────────────────────
+  static const String changePassword = '/api/users/change-password';
   static const String myScore = '/api/users/me/score';
   static const String myStats = '/api/users/me/stats';
   static const String myActivityStats = '/api/users/me/activity-stats';

@@ -16,12 +16,13 @@ class CommonTextField extends StatelessWidget {
   final bool? readonly;
   final FormFieldValidator<String>? validator;
   final Iterable<String>? autofillHints;
+  final bool isPassword;
 
   const CommonTextField({
     super.key,
     this.label,
     required this.controller,
-    required this.keyboardType,
+    this.keyboardType = TextInputType.text,
     required this.hintText,
     this.maxlines,
     this.maxLength,
@@ -31,6 +32,7 @@ class CommonTextField extends StatelessWidget {
     this.validator,
     this.digitOnly,
     this.autofillHints,
+    this.isPassword = false,
   });
 
   @override
@@ -81,6 +83,7 @@ class CommonTextField extends StatelessWidget {
                       ? [FilteringTextInputFormatter.digitsOnly]
                       : null,
                   keyboardType: keyboardType,
+                  obscureText: isPassword,
                   autofillHints: autofillHints,
                   decoration: InputDecoration(
                     hintText: hintText,

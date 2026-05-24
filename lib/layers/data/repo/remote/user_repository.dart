@@ -9,6 +9,20 @@ import 'package:adnetwork/layers/dto/api_response.dart';
 class UserRepository {
   final ApiClient _api = ApiClient.instance;
 
+  /// PATCH /users/change-password
+  Future<ApiResponse<dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    return _api.patch(
+      ApiEndpoints.changePassword,
+      body: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      },
+    );
+  }
+
   /// GET /users/me/score
   Future<ApiResponse<ScoreModel>> getMyScore() async {
     return _api.get<ScoreModel>(

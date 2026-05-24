@@ -121,6 +121,25 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
       
+              // ── Account & Security ──
+              _SectionTitle(title: 'Account & Security', cs: cs),
+              const SizedBox(height: 10),
+              _SectionCard(
+                isDark: isDark,
+                cs: cs,
+                child: Column(
+                  children: [
+                    _SettingsTile(
+                      icon: Icons.lock_outline_rounded,
+                      label: 'Change Password',
+                      cs: cs,
+                      onTap: () => Navigator.pushNamed(context, '/change-password'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+      
               // ── Support ──
               _SectionTitle(title: 'Support', cs: cs),
               const SizedBox(height: 10),

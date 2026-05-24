@@ -5,6 +5,10 @@ import 'package:adnetwork/config/theme/routes_config.dart';
 import 'package:adnetwork/core/functions/navigator.dart';
 import 'package:flutter/material.dart';
 import 'package:pretty_animated_text/pretty_animated_text.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:adnetwork/core/models/app_update_model.dart';
+import 'package:adnetwork/layers/data/repo/remote/app_update_repository.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -20,12 +24,90 @@ class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
+    _checkAppUpdateAndNavigate();
+  }
 
-    Timer(const Duration(milliseconds: 2600), () {
-      if (mounted) {
-        navigateAndReplace(context, Routes.login);
+  Future<void> _checkAppUpdateAndNavigate() async {
+    // Wait for the animation to complete
+    await Future.delayed(const Duration(milliseconds: 2600));
+    
+    if (!mounted) return;
+
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
+
+      final updateRepo = AppUpdateRepository();
+      final response = await updateRepo.checkUpdate('adnetworkpro');
+
+      if (response.success == true && response.data != null) {
+        final updateData = response.data!;
+        final newBuild = updateData.buildNumber ?? 0;
+
+        if (newBuild > currentBuild) {
+          if (!mounted) return;
+          _showUpdateDialog(updateData);
+          return; // Wait for user interaction
+        }
       }
-    });
+    } catch (e) {
+      // Ignore errors and proceed
+    }
+
+    if (mounted) {
+      navigateAndReplace(context, Routes.login);
+    }
+  }
+
+  void _showUpdateDialog(AppUpdateModel updateData) {
+    final isMandatory = updateData.isMandatory == 1;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: !isMandatory,
+      builder: (context) {
+        return PopScope(
+          canPop: !isMandatory,
+          child: AlertDialog(
+            title: const Text('Update Available'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('A new version (${updateData.version}) is available. Please update to continue.'),
+                if (updateData.releaseNotes != null && updateData.releaseNotes!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Text('Release Notes:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(updateData.releaseNotes!),
+                ],
+              ],
+            ),
+            actions: [
+              if (!isMandatory)
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    navigateAndReplace(context, Routes.login);
+                  },
+                  child: const Text('Later'),
+                ),
+              TextButton(
+                onPressed: () async {
+                  if (updateData.downloadUrl != null) {
+                    final uri = Uri.parse(updateData.downloadUrl!);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  }
+                },
+                child: const Text('Update Now'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override

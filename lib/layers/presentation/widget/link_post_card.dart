@@ -137,117 +137,200 @@ class LinkPostCard extends StatelessWidget {
           // ── Inner Content Card ──
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 14),
-            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark
-                  ? cs.primary.withValues(alpha: .06)
-                  : cs.secondary.withValues(alpha: .04),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: cs.primary.withValues(alpha: isDark ? .12 : .08),
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [
+                        cs.primary.withValues(alpha: .15),
+                        cs.primary.withValues(alpha: .05),
+                      ]
+                    : [
+                        cs.primary.withValues(alpha: .08),
+                        cs.secondary.withValues(alpha: .03),
+                      ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: cs.primary.withValues(alpha: isDark ? .2 : .1),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: cs.primary.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Title with ID
-                RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                    style: getMediumStyle(fontSize: 14, color: cs.onSurface),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header: Task ID & Status Chip
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      TextSpan(text: 'Task '),
-                      TextSpan(
-                        text: '#${link.id?.toUpperCase() ?? ''} ',
-                        style: getBoldStyle(fontSize: 14, color: cs.primary),
-                      ),
-                      TextSpan(
-                        text: link.url,
-                        style: getSemiBoldStyle(
-                          fontSize: 12,
-                          color: cs.onSurface,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: cs.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.rocket_launch_rounded,
+                                size: 18,
+                                color: cs.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Task ID',
+                                    style: getRegularStyle(
+                                      fontSize: 11,
+                                      color: cs.onSurface.withValues(alpha: .5),
+                                    ),
+                                  ),
+                                  Text(
+                                    '#${link.id?.toUpperCase() ?? ''}',
+                                    style: getBoldStyle(
+                                      fontSize: 15,
+                                      color: cs.onSurface,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const TextSpan(text: ' 🚀'),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // Published date
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('📅', style: TextStyle(fontSize: 13)),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Published on: (${DateFormat('dd MMM yyyy, hh:mm a').format(link.publishedDate ?? DateTime.now())})',
-                      style: getRegularStyle(
-                        fontSize: 12,
-                        color: cs.onSurface.withValues(alpha: .6),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Stay connected for more tasks!',
-                  style: getRegularStyle(
-                    fontSize: 12,
-                    color: cs.onSurface.withValues(alpha: .55),
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Status
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Status: ',
-                      style: getMediumStyle(
-                        fontSize: 12,
-                        color: cs.onSurface.withValues(alpha: .6),
-                      ),
-                    ),
-                    Icon(Icons.public_rounded, size: 14, color: cs.secondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      link.status ?? 'Unknown',
-                      style: getMediumStyle(fontSize: 12, color: cs.secondary),
-                    ),
-                  ],
-                ),
-                if (link.description != null &&
-                    link.description!.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  RichText(
-                    textAlign: TextAlign.center,
-                    text: TextSpan(
-                      style: getRegularStyle(
-                        fontSize: 12,
-                        color: cs.onSurface.withValues(alpha: .6),
-                      ),
-                      children: [
-                        TextSpan(
-                          text: '${link.description!.split('.').first}. ',
+                      // Status Chip
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
                         ),
-                        TextSpan(
-                          text: 'Opportunities',
-                          style: getSemiBoldStyle(
-                            fontSize: 12,
-                            color: cs.primary,
+                        decoration: BoxDecoration(
+                          color: cs.secondary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: cs.secondary.withValues(alpha: 0.2),
                           ),
                         ),
-                        TextSpan(
-                          text:
-                              '. Stay proactive & follow the user to keep the tasks coming your way! ✅',
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.public_rounded,
+                              size: 12,
+                              color: cs.secondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              link.status ?? 'Unknown',
+                              style: getSemiBoldStyle(
+                                fontSize: 11,
+                                color: cs.secondary,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Divider
+                  Divider(
+                    height: 1,
+                    color: cs.onSurface.withValues(alpha: 0.05),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Description / Message
+                  if (link.description != null &&
+                      link.description!.isNotEmpty) ...[
+                    RichText(
+                      text: TextSpan(
+                        style: getRegularStyle(
+                          fontSize: 13,
+                          color: cs.onSurface.withValues(alpha: .8),
+                        ),
+                        children: [
+                          TextSpan(
+                            text: '${link.description!.split('.').first}. ',
+                          ),
+                          TextSpan(
+                            text: 'Opportunities',
+                            style: getSemiBoldStyle(
+                              fontSize: 13,
+                              color: cs.primary,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '. Stay proactive & follow the user to keep the tasks coming your way! ✅',
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(height: 12),
+                  ] else ...[
+                    RichText(
+                      text: TextSpan(
+                        style: getRegularStyle(
+                          fontSize: 13,
+                          color: cs.onSurface.withValues(alpha: .8),
+                        ),
+                        children: [
+                          TextSpan(text: 'Stay connected for more '),
+                          TextSpan(
+                            text: 'Opportunities',
+                            style: getSemiBoldStyle(
+                              fontSize: 13,
+                              color: cs.primary,
+                            ),
+                          ),
+                          TextSpan(text: '! Keep the tasks coming your way. ✅'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // Footer metadata
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today_rounded,
+                        size: 14,
+                        color: cs.onSurface.withValues(alpha: 0.5),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Published: ${DateFormat('dd MMM yyyy, hh:mm a').format(link.publishedDate ?? DateTime.now())}',
+                          style: getMediumStyle(
+                            fontSize: 11,
+                            color: cs.onSurface.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ],
+              ),
             ),
           ),
           const SizedBox(height: 12),

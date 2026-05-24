@@ -26,6 +26,7 @@ class AuthRepository {
         'last_name': lastName,
         'username': username,
         'email': email,
+        'appname': 'adnetworkpro',
         'password': password,
         'currentAppVersion': version,
         if (gender != null) 'gender': gender,
@@ -46,6 +47,7 @@ class AuthRepository {
       body: {
         'email': email,
         'password': password,
+        'appname': 'adnetworkpro',
         'currentAppVersion': packageInfo.version,
       },
       fromJsonModel: (json) =>
