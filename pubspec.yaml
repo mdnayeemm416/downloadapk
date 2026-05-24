@@ -46,6 +46,9 @@ dependencies:
   pretty_http_logger: ^1.0.5
   url_launcher: ^6.3.2
   package_info_plus: ^8.2.1
+  dio: ^5.9.2
+  path_provider: ^2.1.5
+  open_filex: ^4.7.0
 
 dev_dependencies:
   flutter_test:
