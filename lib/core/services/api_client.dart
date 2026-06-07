@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:adnetwork/config/env_config.dart';
 import 'package:adnetwork/core/services/token_storage.dart';
 import 'package:adnetwork/layers/dto/api_response.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:pretty_http_logger/pretty_http_logger.dart';
 
@@ -16,7 +17,7 @@ class ApiClient {
   static final ApiClient instance = ApiClient._();
 
   final HttpWithMiddleware _client = HttpWithMiddleware.build(middlewares: [
-    HttpLogger(logLevel: LogLevel.BODY),
+    if (!kReleaseMode) HttpLogger(logLevel: LogLevel.BODY),
   ]);
 
   // ─────────────────── Helpers ───────────────────

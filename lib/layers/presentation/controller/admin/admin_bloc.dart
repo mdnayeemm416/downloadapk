@@ -1,3 +1,4 @@
+import 'package:adnetwork/layers/data/model/device_association_model.dart';
 import 'package:adnetwork/layers/data/model/user_model.dart';
 import 'package:adnetwork/layers/data/repo/remote/admin_repository.dart';
 import 'package:equatable/equatable.dart';
@@ -22,6 +23,13 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     on<SearchUsers>(_onSearch);
     on<LoadResetRequests>(_onLoadResetRequests);
     on<ResetUserPassword>(_onResetPassword);
+    on<LoadPendingDevices>(_onLoadPendingDevices);
+    on<ApproveDevice>(_onApproveDevice);
+    on<RejectDevice>(_onRejectDevice);
+    on<ToggleSelectionMode>(_onToggleSelectionMode);
+    on<ToggleUserSelection>(_onToggleUserSelection);
+    on<UpdateSubscription>(_onUpdateSubscription);
+    on<BulkUpdateSubscription>(_onBulkUpdateSubscription);
   }
 
   Future<void> _onLoadAll(LoadAllUsers event, Emitter<AdminState> emit) async {
@@ -92,6 +100,64 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
       }
     } catch (e) {
       emit(state.copyWith(errorMessage: e.toString(), actionUserId: '', actionType: ''));
+    }
+  }
+
+  void _onToggleSelectionMode(ToggleSelectionMode event, Emitter<AdminState> emit) {
+    if (state.isSelectionMode) {
+      emit(state.copyWith(isSelectionMode: false, selectedUserIds: {}));
+    } else {
+      emit(state.copyWith(isSelectionMode: true));
+    }
+  }
+
+  void _onToggleUserSelection(ToggleUserSelection event, Emitter<AdminState> emit) {
+    final updatedSelection = Set<String>.from(state.selectedUserIds);
+    if (updatedSelection.contains(event.userId)) {
+      updatedSelection.remove(event.userId);
+    } else {
+      updatedSelection.add(event.userId);
+    }
+    emit(state.copyWith(selectedUserIds: updatedSelection));
+  }
+
+  Future<void> _onUpdateSubscription(UpdateSubscription event, Emitter<AdminState> emit) async {
+    emit(state.copyWith(actionUserId: event.userId, actionType: 'update_sub'));
+    try {
+      final response = await adminRepository.updateSubscription(event.userId, event.autolike);
+      if (response.isSuccess) {
+        _updateUserInList(emit, event.userId, autolike: event.autolike);
+        emit(state.copyWith(successMessage: 'Subscription updated', actionUserId: '', actionType: ''));
+      } else {
+        emit(state.copyWith(errorMessage: response.message ?? 'Failed', actionUserId: '', actionType: ''));
+      }
+    } catch (e) {
+      emit(state.copyWith(errorMessage: e.toString(), actionUserId: '', actionType: ''));
+    }
+  }
+
+  Future<void> _onBulkUpdateSubscription(BulkUpdateSubscription event, Emitter<AdminState> emit) async {
+    if (state.selectedUserIds.isEmpty) return;
+
+    emit(state.copyWith(actionType: 'bulk_update_sub'));
+    try {
+      final userIdsList = state.selectedUserIds.toList();
+      final response = await adminRepository.bulkUpdateSubscription(userIdsList, event.autolike);
+      if (response.isSuccess) {
+        for (var userId in userIdsList) {
+          _updateUserInList(emit, userId, autolike: event.autolike);
+        }
+        emit(state.copyWith(
+          successMessage: 'Bulk subscription updated',
+          actionType: '',
+          isSelectionMode: false,
+          selectedUserIds: {},
+        ));
+      } else {
+        emit(state.copyWith(errorMessage: response.message ?? 'Failed to update bulk', actionType: ''));
+      }
+    } catch (e) {
+      emit(state.copyWith(errorMessage: e.toString(), actionType: ''));
     }
   }
 
@@ -255,9 +321,99 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     }
   }
 
+  Future<void> _onLoadPendingDevices(
+    LoadPendingDevices event,
+    Emitter<AdminState> emit,
+  ) async {
+    emit(state.copyWith(status: AdminStatus.loading));
+
+    try {
+      final response = await adminRepository.getPendingDevices();
+
+      if (response.isSuccess) {
+        final devices = response.dataList ?? <DeviceAssociationModel>[];
+        emit(state.copyWith(
+          status: AdminStatus.loaded,
+          pendingDevices: devices,
+        ));
+      } else {
+        emit(state.copyWith(
+          status: AdminStatus.error,
+          errorMessage: response.message ?? 'Failed to load pending devices',
+        ));
+      }
+    } catch (e) {
+      emit(state.copyWith(
+        status: AdminStatus.error,
+        errorMessage: e.toString(),
+      ));
+    }
+  }
+
+  Future<void> _onApproveDevice(
+    ApproveDevice event,
+    Emitter<AdminState> emit,
+  ) async {
+    emit(state.copyWith(
+        actionUserId: event.userId, actionType: 'approve-device'));
+    try {
+      final response = await adminRepository.approveDevice(event.userId, event.deviceId);
+      if (response.isSuccess) {
+        final remaining = state.pendingDevices
+            .where((d) => d.userId != event.userId || d.deviceId != event.deviceId)
+            .toList();
+        emit(state.copyWith(
+            pendingDevices: remaining,
+            successMessage: 'Device approved successfully',
+            actionUserId: '',
+            actionType: ''));
+      } else {
+        emit(state.copyWith(
+            errorMessage: response.message ?? 'Failed',
+            actionUserId: '',
+            actionType: ''));
+      }
+    } catch (e) {
+      emit(state.copyWith(
+          errorMessage: e.toString(), actionUserId: '', actionType: ''));
+    }
+  }
+
+  Future<void> _onRejectDevice(
+    RejectDevice event,
+    Emitter<AdminState> emit,
+  ) async {
+    emit(state.copyWith(
+        actionUserId: event.userId, actionType: 'reject-device'));
+    try {
+      final response = await adminRepository.rejectDevice(event.userId, event.deviceId);
+      if (response.isSuccess) {
+        final remaining = state.pendingDevices
+            .where((d) => d.userId != event.userId || d.deviceId != event.deviceId)
+            .toList();
+        emit(state.copyWith(
+            pendingDevices: remaining,
+            successMessage: 'Device rejected successfully',
+            actionUserId: '',
+            actionType: ''));
+      } else {
+        emit(state.copyWith(
+            errorMessage: response.message ?? 'Failed',
+            actionUserId: '',
+            actionType: ''));
+      }
+    } catch (e) {
+      emit(state.copyWith(
+          errorMessage: e.toString(), actionUserId: '', actionType: ''));
+    }
+  }
+
   void _onChangeTab(ChangeTab event, Emitter<AdminState> emit) {
     final filtered = _filterByTab(state.allUsers, event.tab);
     emit(state.copyWith(currentTab: event.tab, filteredUsers: filtered, searchQuery: ''));
+    if (event.tab == AdminTab.devices && state.pendingDevices.isEmpty) {
+      add(const LoadPendingDevices());
+    }
   }
 
   void _onSearch(SearchUsers event, Emitter<AdminState> emit) {
@@ -285,6 +441,8 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
         return users.where((u) => u.role == 'moderator').toList();
       case AdminTab.resetRequests:
         return users.where((u) => u.resetRequested == 1).toList();
+      case AdminTab.devices:
+        return users; // pending devices list is stored separately
     }
   }
 
@@ -295,6 +453,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     int? isBlocked,
     int? resetRequested,
     String? role,
+    int? autolike,
   }) {
     final allUsers = state.allUsers.map((u) {
       if (u.id == userId) {
@@ -303,6 +462,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
           isBlocked: isBlocked ?? u.isBlocked,
           resetRequested: resetRequested ?? u.resetRequested,
           role: role ?? u.role,
+          autolike: autolike ?? u.autolike,
         );
       }
       return u;

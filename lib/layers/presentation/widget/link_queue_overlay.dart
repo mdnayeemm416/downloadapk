@@ -7,7 +7,9 @@ import 'package:webview_flutter/webview_flutter.dart';
 /// 2 WebView instances stacked vertically (35px each), loading URLs
 /// directly as top-level pages — no iframes, no X-Frame-Options issues.
 class LinkQueueOverlay extends StatelessWidget {
-  const LinkQueueOverlay({super.key});
+  final bool isPipMode;
+  
+  const LinkQueueOverlay({super.key, this.isPipMode = false});
 
   @override
   Widget build(BuildContext context) {
@@ -20,24 +22,39 @@ class LinkQueueOverlay extends StatelessWidget {
         if (activeCount == 0) return const SizedBox.shrink();
 
         return RepaintBoundary(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (int i = 0; i < LinkQueueManager.maxSlots; i++)
-                if (slots.length > i && slots[i] != null)
-                  SizedBox(
-                    height: 35,
-                    child: _SlotWebView(
-                      // Include retryCount + timestamp to force a NEW widget on each attempt
-                      key: ValueKey(
-                        'slot_${i}_${slots[i]!.url}_${slots[i]!.retryCount}_${slots[i]!.displayedAt.millisecondsSinceEpoch}',
-                      ),
-                      slotIndex: i,
-                      url: slots[i]!.url,
-                    ),
-                  ),
-            ],
-          ),
+          child: isPipMode
+              ? Column(
+                  children: [
+                    for (int i = 0; i < LinkQueueManager.maxSlots; i++)
+                      if (slots.length > i && slots[i] != null)
+                        Expanded(
+                          key: ValueKey(
+                            'slot_${i}_${slots[i]!.url}_${slots[i]!.retryCount}_${slots[i]!.displayedAt.millisecondsSinceEpoch}',
+                          ),
+                          child: _SlotWebView(
+                            slotIndex: i,
+                            url: slots[i]!.url,
+                          ),
+                        ),
+                  ],
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (int i = 0; i < LinkQueueManager.maxSlots; i++)
+                      if (slots.length > i && slots[i] != null)
+                        SizedBox(
+                          key: ValueKey(
+                            'slot_${i}_${slots[i]!.url}_${slots[i]!.retryCount}_${slots[i]!.displayedAt.millisecondsSinceEpoch}',
+                          ),
+                          height: 35,
+                          child: _SlotWebView(
+                            slotIndex: i,
+                            url: slots[i]!.url,
+                          ),
+                        ),
+                  ],
+                ),
         );
       },
     );

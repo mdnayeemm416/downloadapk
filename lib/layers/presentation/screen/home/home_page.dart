@@ -179,90 +179,106 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    ...List.generate(
-                      4,
-                      (i) => _Item(
-                        icon: _icons[i],
-                        label: _labels[i],
-                        active: _idx == i,
-                        onTap: () {
-                          if (i == 0) {
-                            context.read<FeedBloc>().add(const RefreshFeed());
-                            context.read<NoticeBloc>().add(const LoadNotices());
-                          } else if (i == 1) {
-                            context.read<LinkBloc>().add(const LoadMyLinks());
-                          } else if (i == 2) {
-                            context.read<ExploreBloc>().add(
-                              const RefreshExplore(),
-                            );
-                          } else if (i == 3) {
-                            context.read<ProfileBloc>().add(
-                              const LoadProfileStats(),
-                            );
-                          }
-                          setState(() => _idx = i);
-                          Navigator.pop(context);
-                        },
+                    // ── Scrollable Menu Items ──
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 8),
+                            ...List.generate(
+                              4,
+                              (i) => _Item(
+                                icon: _icons[i],
+                                label: _labels[i],
+                                active: _idx == i,
+                                onTap: () {
+                                  if (i == 0) {
+                                    context.read<FeedBloc>().add(const RefreshFeed());
+                                    context.read<NoticeBloc>().add(const LoadNotices());
+                                  } else if (i == 1) {
+                                    context.read<LinkBloc>().add(const LoadMyLinks());
+                                  } else if (i == 2) {
+                                    context.read<ExploreBloc>().add(const RefreshExplore());
+                                  } else if (i == 3) {
+                                    context.read<ProfileBloc>().add(const LoadProfileStats());
+                                  }
+                                  setState(() => _idx = i);
+                                  Navigator.pop(context);
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 8,
+                              ),
+                              child: Divider(
+                                color: cs.onSurface.withValues(alpha: .06),
+                              ),
+                            ),
+                            _Item(
+                              icon: Icons.query_stats_rounded,
+                              label: 'Stats',
+                              active: false,
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.pushNamed(context, '/stats');
+                              },
+                            ),
+                            _Item(
+                              icon: Icons.settings_rounded,
+                              label: 'Settings',
+                              active: false,
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.pushNamed(context, '/settings');
+                              },
+                            ),
+                            // Admin panel — visible for admin and moderator users
+                            if (user?.role == 'admin' || user?.role == 'moderator') ...[
+                              _Item(
+                                icon: Icons.admin_panel_settings_rounded,
+                                label: 'Admin Panel',
+                                active: false,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Navigator.pushNamed(context, '/admin');
+                                },
+                              ),
+                              _Item(
+                                icon: Icons.subscriptions_rounded,
+                                label: 'Manage Subscriptions',
+                                active: false,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Navigator.pushNamed(context, '/admin/subscriptions');
+                                },
+                              ),
+                              _Item(
+                                icon: Icons.campaign_rounded,
+                                label: 'Manage Notices',
+                                active: false,
+                                onTap: () async {
+                                  Navigator.pop(context);
+                                  await Navigator.pushNamed(context, '/admin/notices');
+                                  if (context.mounted) {
+                                    context.read<NoticeBloc>().add(const LoadNotices());
+                                  }
+                                },
+                              ),
+                            ],
+                            const SizedBox(height: 16),
+                          ],
+                        ),
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 8,
-                      ),
-                      child: Divider(
-                        color: cs.onSurface.withValues(alpha: .06),
-                      ),
-                    ),
-                    _Item(
-                      icon: Icons.query_stats_rounded,
-                      label: 'Stats',
-                      active: false,
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, '/stats');
-                      },
-                    ),
-                    _Item(
-                      icon: Icons.settings_rounded,
-                      label: 'Settings',
-                      active: false,
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, '/settings');
-                      },
-                    ),
-                    // Admin panel — visible for admin and moderator users
-                    if (user?.role == 'admin' || user?.role == 'moderator') ...[
-                      _Item(
-                        icon: Icons.admin_panel_settings_rounded,
-                        label: 'Admin Panel',
-                        active: false,
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, '/admin');
-                        },
-                      ),
-                      _Item(
-                        icon: Icons.campaign_rounded,
-                        label: 'Manage Notices',
-                        active: false,
-                        onTap: () async {
-                          Navigator.pop(context);
-                          await Navigator.pushNamed(context, '/admin/notices');
-                          if (context.mounted) {
-                            context.read<NoticeBloc>().add(const LoadNotices());
-                          }
-                        },
-                      ),
-                    ],
-                    const Spacer(),
                     // Logout
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 2,
+                      padding: const EdgeInsets.only(
+                        left: 12,
+                        right: 12,
+                        bottom: 12,
                       ),
                       child: Material(
                         color: cs.error.withValues(alpha: isDark ? .1 : .06),
@@ -314,7 +330,7 @@ class _HomePageState extends State<HomePage> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 24),
                       child: Text(
-                        'Ad Network v1.0.0',
+                        'Ad Network v1.0.4',
                         style: getRegularStyle(
                           fontSize: 11,
                           color: cs.onSurface.withValues(alpha: .25),
@@ -326,15 +342,38 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             body: SafeArea(
-              child: Column(
-                children: [
-                  // Main content
-                  Expanded(
-                    child: IndexedStack(index: _idx, children: _pages),
-                  ),
-                  // Mini WebView at the bottom (20px) for background link viewing
-                  const LinkQueueOverlay(),
-                ],
+              child: ValueListenableBuilder<bool>(
+                valueListenable: isPipModeNotifier,
+                builder: (context, isPip, child) {
+                  return Stack(
+                    children: [
+                      Column(
+                        children: [
+                          // Main content
+                          Expanded(
+                            child: OverflowBox(
+                              minWidth: isPip ? 400 : null,
+                              maxWidth: isPip ? 400 : null,
+                              minHeight: isPip ? 800 : null,
+                              maxHeight: isPip ? 800 : null,
+                              alignment: Alignment.topCenter,
+                              child: IndexedStack(index: _idx, children: _pages),
+                            ),
+                          ),
+                          // Mini WebView at the bottom (35px) for background link viewing when not in PIP
+                          if (!isPip) const LinkQueueOverlay(isPipMode: false),
+                        ],
+                      ),
+                      if (isPip)
+                        Positioned.fill(
+                          child: Container(
+                            color: Theme.of(context).colorScheme.surface,
+                            child: const LinkQueueOverlay(isPipMode: true),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
           );

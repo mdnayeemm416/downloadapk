@@ -10,6 +10,7 @@ class UserModel {
   final int? isApproved;
   final int? isBlocked;
   final int? resetRequested;
+  final int? autolike;
   int followersCount;
   int followingCount;
   int linkCount;
@@ -28,6 +29,7 @@ class UserModel {
     this.isApproved,
     this.isBlocked,
     this.resetRequested,
+    this.autolike,
     this.followersCount = 0,
     this.followingCount = 0,
     this.linkCount = 0,
@@ -48,6 +50,9 @@ class UserModel {
       isApproved: json['is_approved'] as int?,
       isBlocked: json['is_blocked'] as int?,
       resetRequested: json['reset_requested'] as int?,
+      autolike: json['subscription'] != null 
+          ? json['subscription']['autolike'] as int? 
+          : json['autolike'] as int?,
       followersCount: (json['follower_count'] as int?) ?? (json['followers_count'] as int?) ?? 0,
       followingCount: (json['following_count'] as int?) ?? 0,
       linkCount: (json['link_count'] as int?) ?? 0,
@@ -72,6 +77,7 @@ class UserModel {
     'is_approved': isApproved,
     'is_blocked': isBlocked,
     'reset_requested': resetRequested,
+    'autolike': autolike,
     'followers_count': followersCount,
     'following_count': followingCount,
     'link_count': linkCount,
@@ -90,6 +96,7 @@ class UserModel {
     int? isApproved,
     int? isBlocked,
     int? resetRequested,
+    int? autolike,
     int? followersCount,
     int? followingCount,
     int? linkCount,
@@ -108,6 +115,7 @@ class UserModel {
       isApproved: isApproved ?? this.isApproved,
       isBlocked: isBlocked ?? this.isBlocked,
       resetRequested: resetRequested ?? this.resetRequested,
+      autolike: autolike ?? this.autolike,
       followersCount: followersCount ?? this.followersCount,
       followingCount: followingCount ?? this.followingCount,
       linkCount: linkCount ?? this.linkCount,

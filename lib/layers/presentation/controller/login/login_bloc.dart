@@ -1,6 +1,8 @@
 import 'package:adnetwork/core/services/token_storage.dart';
 import 'package:adnetwork/layers/data/repo/remote/auth_repository.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 part 'login_event.dart';
@@ -17,7 +19,10 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
     on<ForgotPasswordSubmitted>(_onForgotPasswordSubmitted);
   }
 
-  void _onInitializeRememberMe(InitializeRememberMe event, Emitter<LoginState> emit) {
+  void _onInitializeRememberMe(
+    InitializeRememberMe event,
+    Emitter<LoginState> emit,
+  ) {
     emit(state.copyWith(isRememberMe: event.value));
   }
 
@@ -59,13 +64,44 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
 
         // Cache credentials if Remember Me is checked, otherwise clear them
         if (state.isRememberMe) {
-          await TokenStorage.instance.saveCredentials(event.email, event.password);
+          await TokenStorage.instance.saveCredentials(
+            event.email,
+            event.password,
+          );
         } else {
           await TokenStorage.instance.clearCredentials();
         }
 
         // Clear manual logout flag
         await TokenStorage.instance.setManualLogout(false);
+        // Fetch subscription check
+        final username = response.data!.user?.username;
+        if (username != null && username.isNotEmpty) {
+          try {
+            final subResponse = await authRepository.checkSubscription(
+              username,
+            );
+            debugPrint('login_bloc: checkSubscription response success: ${subResponse.isSuccess}, data: ${subResponse.data}');
+            if (subResponse.isSuccess && subResponse.data != null) {
+              final subData = subResponse.data;
+              if (subData is Map<String, dynamic>) {
+                final subscription = subData['subscription'];
+                if (subscription is Map) {
+                  final autolike = subscription['autolike'];
+                  final isEnabled = autolike == 1 || autolike == '1' || autolike.toString() == '1';
+                  await TokenStorage.instance.saveAutoLikeEnabled(isEnabled);
+                  debugPrint('login_bloc: parsed autolike as $autolike, saving enabled: $isEnabled');
+                } else {
+                  debugPrint('login_bloc: subscription field is not a Map: $subscription');
+                }
+              } else {
+                debugPrint('login_bloc: subResponse.data is not a Map: $subData');
+              }
+            }
+          } catch (e) {
+            debugPrint('login_bloc: Error checking subscription: $e');
+          }
+        }
 
         emit(state.copyWith(status: LoginStatus.success));
       } else {
@@ -99,39 +135,48 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
     Emitter<LoginState> emit,
   ) async {
     if (event.identifier.isEmpty) {
-      emit(state.copyWith(
-        status: LoginStatus.failure,
-        errorMessage: 'Please enter your email or username',
-      ));
+      emit(
+        state.copyWith(
+          status: LoginStatus.failure,
+          errorMessage: 'Please enter your email or username',
+        ),
+      );
       return;
     }
 
-    emit(state.copyWith(
-      status: LoginStatus.loading,
-      errorMessage: '',
-      forgotPasswordSuccessMessage: '',
-    ));
+    emit(
+      state.copyWith(
+        status: LoginStatus.loading,
+        errorMessage: '',
+        forgotPasswordSuccessMessage: '',
+      ),
+    );
 
     try {
       final response = await authRepository.forgotPassword(event.identifier);
 
       if (response.isSuccess) {
-        emit(state.copyWith(
-          status: LoginStatus.initial,
-          forgotPasswordSuccessMessage: response.message ??
-              'Password reset requested successfully. Please wait for an administrator.',
-        ));
+        emit(
+          state.copyWith(
+            status: LoginStatus.initial,
+            forgotPasswordSuccessMessage:
+                response.message ??
+                'Password reset requested successfully. Please wait for an administrator.',
+          ),
+        );
       } else {
-        emit(state.copyWith(
-          status: LoginStatus.failure,
-          errorMessage: response.message ?? 'Failed to request password reset',
-        ));
+        emit(
+          state.copyWith(
+            status: LoginStatus.failure,
+            errorMessage:
+                response.message ?? 'Failed to request password reset',
+          ),
+        );
       }
     } catch (e) {
-      emit(state.copyWith(
-        status: LoginStatus.failure,
-        errorMessage: e.toString(),
-      ));
+      emit(
+        state.copyWith(status: LoginStatus.failure, errorMessage: e.toString()),
+      );
     }
   }
 }

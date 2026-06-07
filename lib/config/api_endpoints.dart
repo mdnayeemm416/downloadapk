@@ -47,8 +47,16 @@ class ApiEndpoints {
   static String adminResetPassword(String id) =>
       '/api/admin/users/$id/reset-password';
   static const String adminResetRequests = '/api/admin/users/reset-requests';
+  static String adminUpdateSubscription(String id) => '/api/admin/users/$id/subscription';
+  static const String adminBulkUpdateSubscription = '/api/admin/users/bulk/subscription';
+  static const String adminPendingDevices = '/api/admin/devices/pending';
+  static const String adminApproveDevice = '/api/admin/devices/approve';
+  static const String adminRejectDevice = '/api/admin/devices/reject';
 
   // ──────────────────────────── Notices ───────────────────────────
   static const String notices = '/api/notices';
   static String noticeById(String id) => '/api/notices/$id';
+
+  // ──────────────────────────── Subscriptions ─────────────────────
+  static const String checkSubscription = '/api/subscriptions/check';
 }

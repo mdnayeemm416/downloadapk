@@ -1,5 +1,6 @@
 import 'package:adnetwork/config/api_endpoints.dart';
 import 'package:adnetwork/core/services/api_client.dart';
+import 'package:adnetwork/core/services/token_storage.dart';
 import 'package:adnetwork/layers/data/model/login_response_model.dart';
 import 'package:adnetwork/layers/dto/api_response.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -18,6 +19,7 @@ class AuthRepository {
   }) async {
     final packageInfo = await PackageInfo.fromPlatform();
     final version = "${packageInfo.version}+${packageInfo.buildNumber}";
+    final deviceId = await TokenStorage.instance.getOrGenerateDeviceId();
 
     return _api.post(
       ApiEndpoints.register,
@@ -29,6 +31,7 @@ class AuthRepository {
         'appname': 'adnetworkpro',
         'password': password,
         'currentAppVersion': version,
+        'deviceId': deviceId,
         if (gender != null) 'gender': gender,
       },
       auth: false,
@@ -41,6 +44,7 @@ class AuthRepository {
     required String password,
   }) async {
     final packageInfo = await PackageInfo.fromPlatform();
+    final deviceId = await TokenStorage.instance.getOrGenerateDeviceId();
 
     return _api.post<LoginResponseModel>(
       ApiEndpoints.login,
@@ -49,6 +53,7 @@ class AuthRepository {
         'password': password,
         'appname': 'adnetworkpro',
         'currentAppVersion': packageInfo.version,
+        'deviceId': deviceId,
       },
       fromJsonModel: (json) =>
           LoginResponseModel.fromJson(json as Map<String, dynamic>),
@@ -61,6 +66,14 @@ class AuthRepository {
     return _api.post(
       ApiEndpoints.forgotPassword,
       body: {'identifier': identifier},
+      auth: false,
+    );
+  }
+
+  /// GET /subscriptions/check
+  Future<ApiResponse<dynamic>> checkSubscription(String username) async {
+    return _api.get(
+      '${ApiEndpoints.checkSubscription}?username=$username&appname=adnetworkpro',
       auth: false,
     );
   }

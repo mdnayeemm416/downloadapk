@@ -80,3 +80,49 @@ class ResetUserPassword extends AdminEvent {
   @override
   List<Object?> get props => [userId];
 }
+
+class LoadPendingDevices extends AdminEvent {
+  const LoadPendingDevices();
+}
+
+class ApproveDevice extends AdminEvent {
+  final String userId;
+  final String deviceId;
+  const ApproveDevice(this.userId, this.deviceId);
+  @override
+  List<Object?> get props => [userId, deviceId];
+}
+
+class RejectDevice extends AdminEvent {
+  final String userId;
+  final String deviceId;
+  const RejectDevice(this.userId, this.deviceId);
+  @override
+  List<Object?> get props => [userId, deviceId];
+}
+
+class ToggleSelectionMode extends AdminEvent {
+  const ToggleSelectionMode();
+}
+
+class ToggleUserSelection extends AdminEvent {
+  final String userId;
+  const ToggleUserSelection(this.userId);
+  @override
+  List<Object?> get props => [userId];
+}
+
+class UpdateSubscription extends AdminEvent {
+  final String userId;
+  final int autolike;
+  const UpdateSubscription(this.userId, this.autolike);
+  @override
+  List<Object?> get props => [userId, autolike];
+}
+
+class BulkUpdateSubscription extends AdminEvent {
+  final int autolike;
+  const BulkUpdateSubscription(this.autolike);
+  @override
+  List<Object?> get props => [autolike];
+}

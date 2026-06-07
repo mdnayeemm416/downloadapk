@@ -1,6 +1,7 @@
 import 'package:adnetwork/layers/presentation/screen/about/about_screen.dart';
 import 'package:adnetwork/layers/presentation/screen/admin/admin_notices_screen.dart';
 import 'package:adnetwork/layers/presentation/screen/admin/admin_screen.dart';
+import 'package:adnetwork/layers/presentation/screen/admin/admin_subscriptions_screen.dart';
 import 'package:adnetwork/layers/presentation/screen/contact/contact_screen.dart';
 import 'package:adnetwork/layers/presentation/screen/home/home_page.dart';
 import 'package:adnetwork/layers/presentation/screen/login/login_screen.dart';
@@ -34,6 +35,7 @@ class Routes {
   static const String terms = '/terms';
   static const String admin = '/admin';
   static const String adminNotices = '/admin/notices';
+  static const String adminSubscriptions = '/admin/subscriptions';
 }
 
 class AppRoutes {
@@ -76,6 +78,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const AdminScreen());
       case Routes.adminNotices:
         return MaterialPageRoute(builder: (_) => const AdminNoticesScreen());
+      case Routes.adminSubscriptions:
+        return MaterialPageRoute(builder: (_) => const AdminSubscriptionsScreen());
       default:
         return _unDefinedRoute();
     }

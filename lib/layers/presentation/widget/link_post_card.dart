@@ -65,9 +65,13 @@ class LinkPostCard extends StatelessWidget {
                             border: Border.all(
                               color: cs.primary.withValues(alpha: .2),
                             ),
+                            image: DecorationImage(
+                              image: AssetImage(ImageAssets.adNetworkLogo),
+                              fit: BoxFit.fill,
+                            ),
                           ),
-                          padding: const EdgeInsets.all(5.0),
-                          child: Image.asset(ImageAssets.adNetworkLogo),
+                          // padding: const EdgeInsets.all(5.0),
+                          // child: Image.asset(ImageAssets.adNetworkLogo, fit: BoxFit.fill,),
                         ),
                       ),
                       Positioned(
@@ -141,24 +145,24 @@ class LinkPostCard extends StatelessWidget {
               gradient: LinearGradient(
                 colors: isDark
                     ? [
-                        cs.primary.withValues(alpha: .15),
-                        cs.primary.withValues(alpha: .05),
+                        cs.primary.withValues(alpha: 0.1),
+                        cs.primary.withValues(alpha: 0.02),
                       ]
                     : [
-                        cs.primary.withValues(alpha: .08),
-                        cs.secondary.withValues(alpha: .03),
+                        cs.primary.withValues(alpha: 0.05),
+                        cs.primary.withValues(alpha: 0.01),
                       ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: cs.primary.withValues(alpha: isDark ? .2 : .1),
-                width: 1.5,
+                color: cs.primary.withValues(alpha: isDark ? 0.15 : 0.08),
+                width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: cs.primary.withValues(alpha: 0.05),
+                  color: cs.primary.withValues(alpha: isDark ? 0.02 : 0.01),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),

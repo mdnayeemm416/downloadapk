@@ -1,4 +1,6 @@
+import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
+
 
 /// Manages JWT token persistence using SharedPreferences.
 class TokenStorage {
@@ -10,6 +12,7 @@ class TokenStorage {
   static const String _cachedEmailKey = 'cached_email';
   static const String _cachedPasswordKey = 'cached_password';
   static const String _manualLogoutKey = 'manual_logout';
+  static const String _autoLikeEnabledKey = 'auto_like_enabled';
 
   /// Save JWT token after successful login.
   Future<void> saveToken(String token) async {
@@ -45,8 +48,9 @@ class TokenStorage {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_userIdKey);
-    // Note: Deliberately not clearing _cachedEmailKey and _cachedPasswordKey here 
-    // so "Remember Me" persists across manual logouts if implemented, 
+    await prefs.remove(_autoLikeEnabledKey);
+    // Note: Deliberately not clearing _cachedEmailKey and _cachedPasswordKey here
+    // so "Remember Me" persists across manual logouts if implemented,
     // but the prompt usually means they stay until unchecked.
   }
 
@@ -86,5 +90,31 @@ class TokenStorage {
   Future<bool> hasManuallyLoggedOut() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_manualLogoutKey) ?? false;
+  }
+
+  /// Save auto-like subscription status
+  Future<void> saveAutoLikeEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_autoLikeEnabledKey, enabled);
+  }
+
+  /// Check if auto-like is enabled
+  Future<bool> isAutoLikeEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_autoLikeEnabledKey) ?? false;
+  }
+
+  /// Retrieves the existing device ID or generates a new persistent one if not present.
+  Future<String> getOrGenerateDeviceId() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? deviceId = prefs.getString('device_id');
+    if (deviceId == null) {
+      final random = Random();
+      final part1 = DateTime.now().microsecondsSinceEpoch;
+      final part2 = random.nextInt(1000000);
+      deviceId = 'device_${part1}_$part2';
+      await prefs.setString('device_id', deviceId);
+    }
+    return deviceId;
   }
 }

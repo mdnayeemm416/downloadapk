@@ -22,16 +22,28 @@ class ApiResponse<T> {
     Map<String, dynamic> res,
     T Function(dynamic json)? fromJsonModel,
   ) {
-    var rawData = res['data'];
+    var rawData = res.containsKey('data') ? res['data'] : res;
 
     T? parsedData;
     List<T>? parsedList;
 
-    if (rawData != null && fromJsonModel != null) {
-      if (rawData is List) {
-        parsedList = rawData.map((e) => fromJsonModel(e)).toList();
+    if (rawData != null) {
+      if (fromJsonModel != null) {
+        if (rawData is List) {
+          parsedList = rawData.map((e) => fromJsonModel(e)).toList();
+        } else {
+          parsedData = fromJsonModel(rawData);
+        }
       } else {
-        parsedData = fromJsonModel(rawData);
+        if (rawData is T) {
+          parsedData = rawData;
+        } else {
+          try {
+            parsedData = rawData as T?;
+          } catch (_) {
+            parsedData = null;
+          }
+        }
       }
     }
 

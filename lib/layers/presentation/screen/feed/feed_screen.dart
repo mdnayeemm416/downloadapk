@@ -10,13 +10,255 @@ import 'package:adnetwork/layers/presentation/widget/suggested_user_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:adnetwork/core/services/token_storage.dart';
 
-class FeedScreen extends StatelessWidget {
+import 'dart:async';
+import 'dart:io' show Platform;
+
+import 'package:pip/pip.dart';
+
+final ValueNotifier<bool> isPipModeNotifier = ValueNotifier(false);
+
+class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
+
+  @override
+  State<FeedScreen> createState() => _FeedScreenState();
+}
+
+class _FeedScreenState extends State<FeedScreen> {
+  late ScrollController _scrollController;
+  Timer? _botTimer;
+  bool _isAutoScrolling = false;
+  int _currentTargetIndex = 0;
+  bool _isProcessingTarget = false;
+  final Map<int, GlobalKey> _cardKeys = {};
+  final _pip = Pip();
+  bool _isPipActive = false;
+  bool _isAutoLikeEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _initPip();
+    _loadAutoLikeStatus();
+  }
+
+  Future<void> _loadAutoLikeStatus() async {
+    final enabled = await TokenStorage.instance.isAutoLikeEnabled();
+    debugPrint('feed_screen.dart: _loadAutoLikeStatus - enabled: $enabled');
+    if (mounted) {
+      setState(() {
+        _isAutoLikeEnabled = enabled;
+      });
+    }
+  }
+
+  Future<void> _initPip() async {
+    try {
+      final isSupported = await _pip.isSupported();
+      if (isSupported) {
+        PipOptions options = PipOptions(autoEnterEnabled: false);
+        if (Platform.isAndroid) {
+          options = PipOptions(
+            autoEnterEnabled: false,
+            aspectRatioX: 9,
+            aspectRatioY: 16,
+          );
+        } else if (Platform.isIOS) {
+          options = PipOptions(
+            autoEnterEnabled: false,
+            preferredContentWidth: 300,
+            preferredContentHeight: 533,
+            controlStyle: 0,
+          );
+        }
+        await _pip.setup(options);
+        await _pip.registerStateChangedObserver(
+          PipStateChangedObserver(
+            onPipStateChanged: (state, error) {
+              if (mounted) {
+                final isActive = state == PipState.pipStateStarted;
+                setState(() {
+                  _isPipActive = isActive;
+                });
+                isPipModeNotifier.value = isActive;
+              }
+            },
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to init PIP: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _botTimer?.cancel();
+    _scrollController.dispose();
+    _pip.dispose();
+    super.dispose();
+  }
+
+  void _toggleAutoPlay(FeedState state) {
+    setState(() {
+      _isAutoScrolling = !_isAutoScrolling;
+      _isProcessingTarget = false;
+      _cardKeys.clear();
+      if (_isAutoScrolling) {
+        _currentTargetIndex = 0;
+        _scrollToIndex(0);
+        _isProcessingTarget = true;
+        Future.delayed(const Duration(milliseconds: 900), () {
+          if (mounted && _isAutoScrolling) {
+            setState(() {
+              _isProcessingTarget = false;
+            });
+            _startBotTimer();
+          }
+        });
+      } else {
+        _botTimer?.cancel();
+        _botTimer = null;
+      }
+    });
+  }
+
+  void _startBotTimer() {
+    _botTimer?.cancel();
+    _botTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      if (!mounted || !_isAutoScrolling) {
+        timer.cancel();
+        return;
+      }
+
+      if (_isProcessingTarget) return;
+
+      final feedBloc = context.read<FeedBloc>();
+      final state = feedBloc.state;
+
+      // Wait if loading or in page wait cooldown
+      if (state.pageWaitSeconds > 0 ||
+          state.nextCooldownSeconds > 0 ||
+          state.status == FeedStatus.loading) {
+        return;
+      }
+
+      if (state.links.isEmpty) return;
+
+      // Boundary safety check
+      if (_currentTargetIndex >= state.links.length) {
+        _currentTargetIndex = 0;
+      }
+
+      final link = state.links[_currentTargetIndex];
+
+      if (link.isLiked) {
+        _currentTargetIndex++;
+        if (_currentTargetIndex >= state.links.length) {
+          _cardKeys.clear();
+          _currentTargetIndex = 0;
+          feedBloc.add(ChangeFeedPage(state.currentPage + 1));
+          context.read<ExploreBloc>().add(const RefreshExplore());
+        } else {
+          _isProcessingTarget = true;
+          _scrollToIndex(_currentTargetIndex);
+          Future.delayed(const Duration(milliseconds: 900), () {
+            if (mounted) {
+              setState(() {
+                _isProcessingTarget = false;
+              });
+            }
+          });
+        }
+      } else {
+        // wait for the likeCooldownSeconds
+        if (state.likeCooldownSeconds > 0) {
+          return;
+        }
+
+        _isProcessingTarget = true;
+
+        // Human-like delay before liking (1000ms)
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          if (!mounted || !_isAutoScrolling) {
+            _isProcessingTarget = false;
+            return;
+          }
+
+          // do the action onLike
+          feedBloc.add(ToggleLike(link.id ?? ''));
+
+          // Human-like delay after liking before scrolling (1500ms)
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            if (!mounted || !_isAutoScrolling) {
+              _isProcessingTarget = false;
+              return;
+            }
+
+            if (context.mounted) {
+              // when index end then call next page
+              if (_currentTargetIndex == state.links.length - 1) {
+                _cardKeys.clear();
+                feedBloc.add(ChangeFeedPage(state.currentPage + 1));
+                context.read<ExploreBloc>().add(const RefreshExplore());
+                setState(() {
+                  _currentTargetIndex = 0;
+                  _isProcessingTarget = false;
+                });
+              } else {
+                final int nextIndex = _currentTargetIndex + 1;
+                _scrollToIndex(nextIndex);
+
+                // Wait for scroll animation to complete, then update index
+                Future.delayed(const Duration(milliseconds: 900), () {
+                  if (!mounted || !_isAutoScrolling) {
+                    _isProcessingTarget = false;
+                    return;
+                  }
+                  setState(() {
+                    _currentTargetIndex = nextIndex;
+                    _isProcessingTarget = false;
+                  });
+                });
+              }
+            } else {
+              _isProcessingTarget = false;
+            }
+          });
+        });
+      }
+    });
+  }
+
+  void _scrollToIndex(int index) {
+    if (_scrollController.hasClients) {
+      final key = _cardKeys[index];
+      if (key?.currentContext != null) {
+        Scrollable.ensureVisible(
+          key!.currentContext!,
+          duration: const Duration(milliseconds: 800),
+          alignment: 0.1, // Align near the top of the viewport
+          curve: Curves.easeInOut,
+        );
+      } else {
+        // Fallback to offset-based scroll with human-like height per card
+        final double targetOffset = 50.0 + (index * 320.0);
+        _scrollController.animateTo(
+          targetOffset,
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeInOut,
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+
     return BlocBuilder<FeedBloc, FeedState>(
       builder: (context, state) {
         Widget content;
@@ -170,6 +412,7 @@ class FeedScreen extends StatelessWidget {
               await Future.delayed(const Duration(milliseconds: 600));
             },
             child: CustomScrollView(
+              controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
               ),
@@ -311,8 +554,12 @@ class FeedScreen extends StatelessWidget {
                   SliverList(
                     delegate: SliverChildBuilderDelegate((context, index) {
                       final link = state.links[index];
+                      final cardKey = _cardKeys.putIfAbsent(
+                        index,
+                        () => GlobalKey(),
+                      );
                       return LinkPostCard(
-                        key: ValueKey(link.id),
+                        key: cardKey,
                         link: link,
                         likeCooldownSeconds: state.likeCooldownSeconds,
                         onLike: () {
@@ -625,7 +872,86 @@ class FeedScreen extends StatelessWidget {
             ),
           );
         }
-        return SafeArea(child: content);
+        final showFab =
+            state.nextCooldownSeconds <= 0 &&
+            state.pageWaitSeconds <= 0 &&
+            state.status != FeedStatus.loading &&
+            state.links.isNotEmpty;
+
+        return SafeArea(
+          child: Stack(
+            children: [
+              content,
+              if (showFab)
+                Positioned(
+                  right: 16,
+                  bottom: 24,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (_isAutoScrolling) ...[
+                        FloatingActionButton(
+                          heroTag: 'pipBtn',
+                          onPressed: () async {
+                            try {
+                              final isSupported = await _pip.isSupported();
+                              if (isSupported) {
+                                await _pip.start();
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text(
+                                        'PIP is not supported on this device',
+                                      ),
+                                      backgroundColor: cs.error,
+                                    ),
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              debugPrint('Failed to start PIP: $e');
+                            }
+                          },
+                          backgroundColor: Colors.blueAccent,
+                          foregroundColor: Colors.white,
+                          mini: true,
+                          child: const Icon(
+                            Icons.picture_in_picture_alt_rounded,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (_isAutoLikeEnabled)
+                        FloatingActionButton.extended(
+                          heroTag: 'autoPlayBtn',
+                          onPressed: () => _toggleAutoPlay(state),
+                          backgroundColor: _isAutoScrolling
+                              ? Colors.orange.shade700
+                              : cs.primary,
+                          foregroundColor: Colors.white,
+                          icon: Icon(
+                            _isAutoScrolling
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            size: 24,
+                          ),
+                          label: Text(
+                            _isAutoScrolling ? 'PAUSE' : 'AUTO PLAY',
+                            style: getBoldStyle(
+                              fontSize: 12,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
       },
     );
   }
