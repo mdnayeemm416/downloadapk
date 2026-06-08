@@ -194,14 +194,24 @@ class _HomePageState extends State<HomePage> {
                                 active: _idx == i,
                                 onTap: () {
                                   if (i == 0) {
-                                    context.read<FeedBloc>().add(const RefreshFeed());
-                                    context.read<NoticeBloc>().add(const LoadNotices());
+                                    context.read<FeedBloc>().add(
+                                      const RefreshFeed(),
+                                    );
+                                    context.read<NoticeBloc>().add(
+                                      const LoadNotices(),
+                                    );
                                   } else if (i == 1) {
-                                    context.read<LinkBloc>().add(const LoadMyLinks());
+                                    context.read<LinkBloc>().add(
+                                      const LoadMyLinks(),
+                                    );
                                   } else if (i == 2) {
-                                    context.read<ExploreBloc>().add(const RefreshExplore());
+                                    context.read<ExploreBloc>().add(
+                                      const RefreshExplore(),
+                                    );
                                   } else if (i == 3) {
-                                    context.read<ProfileBloc>().add(const LoadProfileStats());
+                                    context.read<ProfileBloc>().add(
+                                      const LoadProfileStats(),
+                                    );
                                   }
                                   setState(() => _idx = i);
                                   Navigator.pop(context);
@@ -236,7 +246,8 @@ class _HomePageState extends State<HomePage> {
                               },
                             ),
                             // Admin panel — visible for admin and moderator users
-                            if (user?.role == 'admin' || user?.role == 'moderator') ...[
+                            if (user?.role == 'admin' ||
+                                user?.role == 'moderator') ...[
                               _Item(
                                 icon: Icons.admin_panel_settings_rounded,
                                 label: 'Admin Panel',
@@ -252,7 +263,10 @@ class _HomePageState extends State<HomePage> {
                                 active: false,
                                 onTap: () {
                                   Navigator.pop(context);
-                                  Navigator.pushNamed(context, '/admin/subscriptions');
+                                  Navigator.pushNamed(
+                                    context,
+                                    '/admin/subscriptions',
+                                  );
                                 },
                               ),
                               _Item(
@@ -261,9 +275,14 @@ class _HomePageState extends State<HomePage> {
                                 active: false,
                                 onTap: () async {
                                   Navigator.pop(context);
-                                  await Navigator.pushNamed(context, '/admin/notices');
+                                  await Navigator.pushNamed(
+                                    context,
+                                    '/admin/notices',
+                                  );
                                   if (context.mounted) {
-                                    context.read<NoticeBloc>().add(const LoadNotices());
+                                    context.read<NoticeBloc>().add(
+                                      const LoadNotices(),
+                                    );
                                   }
                                 },
                               ),
@@ -330,7 +349,7 @@ class _HomePageState extends State<HomePage> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 24),
                       child: Text(
-                        'Ad Network v1.0.4',
+                        'Ad Network v1.0.5',
                         style: getRegularStyle(
                           fontSize: 11,
                           color: cs.onSurface.withValues(alpha: .25),
@@ -357,7 +376,10 @@ class _HomePageState extends State<HomePage> {
                               minHeight: isPip ? 800 : null,
                               maxHeight: isPip ? 800 : null,
                               alignment: Alignment.topCenter,
-                              child: IndexedStack(index: _idx, children: _pages),
+                              child: IndexedStack(
+                                index: _idx,
+                                children: _pages,
+                              ),
                             ),
                           ),
                           // Mini WebView at the bottom (35px) for background link viewing when not in PIP

@@ -30,12 +30,23 @@ class _SplashPageState extends State<SplashPage> {
     _checkAppUpdateAndNavigate();
   }
 
-  bool _shouldUpdate(String currentVersion, int currentBuild, String newVersion, int newBuild) {
+  bool _shouldUpdate(
+    String currentVersion,
+    String newVersion,
+  ) {
     try {
-      final currentParts = currentVersion.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-      final newParts = newVersion.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-      
-      final maxLength = currentParts.length > newParts.length ? currentParts.length : newParts.length;
+      final currentParts = currentVersion
+          .split('.')
+          .map((e) => int.tryParse(e) ?? 0)
+          .toList();
+      final newParts = newVersion
+          .split('.')
+          .map((e) => int.tryParse(e) ?? 0)
+          .toList();
+
+      final maxLength = currentParts.length > newParts.length
+          ? currentParts.length
+          : newParts.length;
       for (int i = 0; i < maxLength; i++) {
         final c = i < currentParts.length ? currentParts[i] : 0;
         final n = i < newParts.length ? newParts[i] : 0;
@@ -43,20 +54,18 @@ class _SplashPageState extends State<SplashPage> {
         if (c > n) return false;
       }
     } catch (_) {}
-    
-    // Fallback to build number if versions are identical or parsing fails
-    return newBuild > currentBuild;
+
+    return false;
   }
 
   Future<void> _checkAppUpdateAndNavigate() async {
     // Wait for the animation to complete
     await Future.delayed(const Duration(milliseconds: 2600));
-    
+
     if (!mounted) return;
 
     try {
       final packageInfo = await PackageInfo.fromPlatform();
-      final currentBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
       final currentVersion = packageInfo.version;
 
       final updateRepo = AppUpdateRepository();
@@ -64,10 +73,12 @@ class _SplashPageState extends State<SplashPage> {
 
       if (response.success == true && response.data != null) {
         final updateData = response.data!;
-        final newBuild = updateData.buildNumber ?? 0;
         final newVersion = updateData.version ?? currentVersion;
 
-        if (_shouldUpdate(currentVersion, currentBuild, newVersion, newBuild)) {
+        debugPrint('[AppUpdate] Current Version: "$currentVersion", Remote Version: "$newVersion"');
+        debugPrint('[AppUpdate] Should update? ${_shouldUpdate(currentVersion, newVersion)}');
+
+        if (_shouldUpdate(currentVersion, newVersion)) {
           if (!mounted) return;
           _showUpdateDialog(updateData);
           return; // Wait for user interaction
@@ -104,14 +115,21 @@ class _SplashPageState extends State<SplashPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('A new version (${updateData.version}) is available. Please update to continue.'),
-                    if (updateData.releaseNotes != null && updateData.releaseNotes!.isNotEmpty) ...[
+                    Text(
+                      'A new version (${updateData.version}) is available. Please update to continue.',
+                    ),
+                    if (updateData.releaseNotes != null &&
+                        updateData.releaseNotes!.isNotEmpty) ...[
                       const SizedBox(height: 12),
-                      const Text('Release Notes:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Release Notes:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       const SizedBox(height: 4),
                       Text(updateData.releaseNotes!),
                     ],
-                    if (isDownloading || isDownloaded) const SizedBox(height: 20),
+                    if (isDownloading || isDownloaded)
+                      const SizedBox(height: 20),
                     if (isDownloading) ...[
                       LinearProgressIndicator(
                         value: progress,
@@ -130,7 +148,10 @@ class _SplashPageState extends State<SplashPage> {
                       const Center(
                         child: Text(
                           'Download complete! Ready to install.',
-                          style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                   ],
@@ -158,7 +179,9 @@ class _SplashPageState extends State<SplashPage> {
                   else
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isDownloaded ? Colors.green : Theme.of(context).primaryColor,
+                        backgroundColor: isDownloaded
+                            ? Colors.green
+                            : Theme.of(context).primaryColor,
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () async {
@@ -175,12 +198,16 @@ class _SplashPageState extends State<SplashPage> {
                           progress = 0.0;
                         });
 
-                        final cleanUrl = updateData.downloadUrl!.replaceAll(RegExp(r'\s+'), '');
+                        final cleanUrl = updateData.downloadUrl!.replaceAll(
+                          RegExp(r'\s+'),
+                          '',
+                        );
                         cancelToken = CancelToken();
 
                         try {
                           final dir = await getApplicationSupportDirectory();
-                          savedFilePath = '${dir.path}/update_${updateData.version}.apk';
+                          savedFilePath =
+                              '${dir.path}/update_${updateData.version}.apk';
 
                           await Dio().download(
                             cleanUrl,
@@ -213,13 +240,19 @@ class _SplashPageState extends State<SplashPage> {
                             debugPrint('Download failed: $e');
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Download failed. Please check your connection and try again.')),
+                                const SnackBar(
+                                  content: Text(
+                                    'Download failed. Please check your connection and try again.',
+                                  ),
+                                ),
                               );
                             }
                           }
                         }
                       },
-                      child: Text(isDownloaded ? 'Install Update' : 'Update Now'),
+                      child: Text(
+                        isDownloaded ? 'Install Update' : 'Update Now',
+                      ),
                     ),
                 ],
               ),
@@ -255,7 +288,7 @@ class _SplashPageState extends State<SplashPage> {
                 child: Container(
                   padding: const EdgeInsets.all(28),
                   decoration: BoxDecoration(
-                    color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+                    color: const Color.fromARGB(255, 0, 0, 0),
                     borderRadius: BorderRadius.circular(36),
                     boxShadow: [
                       BoxShadow(
@@ -282,9 +315,9 @@ class _SplashPageState extends State<SplashPage> {
                   ),
                 ),
               ),
-      
+
               const SizedBox(height: 20),
-      
+
               // Animated Text using pretty_animated_text
               OffsetText(
                 key: offsetTextBTKey,

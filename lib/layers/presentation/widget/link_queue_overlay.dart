@@ -76,6 +76,7 @@ class _SlotWebViewState extends State<_SlotWebView> {
   late final WebViewController _controller;
   Timer? _viewTimer;
   Timer? _timeoutTimer;
+  bool _isLoading = true;
   bool _finished = false;
 
   @override
@@ -86,9 +87,29 @@ class _SlotWebViewState extends State<_SlotWebView> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
-          onPageFinished: _onPageFinished,
-          onWebResourceError: _onWebResourceError,
-          onHttpError: _onHttpError,
+          onPageStarted: (String url) {
+            setState(() {
+              _isLoading = true;
+            });
+          },
+          onPageFinished: (String url) {
+            setState(() {
+              _isLoading = false;
+            });
+            _onPageFinished(url);
+          },
+          onWebResourceError: (WebResourceError error) {
+            setState(() {
+              _isLoading = false;
+            });
+            _onWebResourceError(error);
+          },
+          onHttpError: (HttpResponseError error) {
+            setState(() {
+              _isLoading = false;
+            });
+            _onHttpError(error);
+          },
         ),
       );
 
@@ -214,6 +235,43 @@ class _SlotWebViewState extends State<_SlotWebView> {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(child: WebViewWidget(controller: _controller));
+    final cs = Theme.of(context).colorScheme;
+    return ClipRect(
+      child: Stack(
+        children: [
+          WebViewWidget(controller: _controller),
+          if (_isLoading)
+            Container(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF1E1E2E)
+                  : Colors.white,
+              child: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'বিজ্ঞাপন লোড হচ্ছে...',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: cs.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

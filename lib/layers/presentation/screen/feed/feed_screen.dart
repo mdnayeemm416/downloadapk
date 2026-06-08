@@ -11,6 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:adnetwork/core/services/token_storage.dart';
+import 'package:flutter/services.dart';
+import 'package:adnetwork/core/services/api_client.dart';
+import 'package:adnetwork/layers/dto/api_response.dart';
 
 import 'dart:async';
 import 'dart:io' show Platform;
@@ -924,32 +927,316 @@ class _FeedScreenState extends State<FeedScreen> {
                         ),
                         const SizedBox(height: 12),
                       ],
-                      if (_isAutoLikeEnabled)
-                        FloatingActionButton.extended(
-                          heroTag: 'autoPlayBtn',
-                          onPressed: () => _toggleAutoPlay(state),
-                          backgroundColor: _isAutoScrolling
-                              ? Colors.orange.shade700
-                              : cs.primary,
-                          foregroundColor: Colors.white,
-                          icon: Icon(
-                            _isAutoScrolling
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            size: 24,
-                          ),
-                          label: Text(
-                            _isAutoScrolling ? 'PAUSE' : 'AUTO PLAY',
-                            style: getBoldStyle(
-                              fontSize: 12,
-                              color: Colors.white,
-                            ),
+                      FloatingActionButton.extended(
+                        heroTag: 'autoPlayBtn',
+                        onPressed: () {
+                          if (_isAutoLikeEnabled) {
+                            _toggleAutoPlay(state);
+                          } else {
+                            _showSubscriptionDialog(context);
+                          }
+                        },
+                        backgroundColor: _isAutoScrolling
+                            ? Colors.orange.shade700
+                            : cs.primary,
+                        foregroundColor: Colors.white,
+                        icon: Icon(
+                          _isAutoScrolling
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                          size: 24,
+                        ),
+                        label: Text(
+                          _isAutoScrolling ? 'PAUSE' : 'AUTO PLAY',
+                          style: getBoldStyle(
+                            fontSize: 12,
+                            color: Colors.white,
                           ),
                         ),
+                      ),
                     ],
                   ),
                 ),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSubscriptionDialog(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          backgroundColor: Colors.transparent,
+          child: FutureBuilder<ApiResponse<dynamic>>(
+            future: ApiClient.instance.get<dynamic>(
+              '/api/getprice',
+              queryParams: {'appname': 'adnetworkpro'},
+              auth: true,
+            ),
+            builder: (context, snapshot) {
+              String priceText = 'লোড হচ্ছে...';
+              double? price;
+
+              if (snapshot.connectionState == ConnectionState.done) {
+                if (snapshot.hasData && snapshot.data!.isSuccess && snapshot.data!.data is Map) {
+                  final priceVal = snapshot.data!.data['price'];
+                  if (priceVal != null) {
+                    price = double.tryParse(priceVal.toString());
+                    if (price != null) {
+                      priceText = '$price ৳';
+                    } else {
+                      priceText = 'ফ্রি';
+                    }
+                  } else {
+                    priceText = 'ফ্রি';
+                  }
+                } else {
+                  priceText = 'মূল্য জানতে যোগাযোগ করুন';
+                }
+              }
+
+              return Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: cs.primary.withValues(alpha: 0.15),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Premium Icon with Gold Gradient
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.amber.shade700, width: 2),
+                      ),
+                      child: Icon(
+                        Icons.workspace_premium_rounded,
+                        color: Colors.amber.shade800,
+                        size: 48,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Dialog Title
+                    Text(
+                      'অটো প্লে সাবস্ক্রিপশন',
+                      style: getBoldStyle(
+                        fontSize: 22,
+                        color: isDark ? Colors.white : cs.onSurface,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Description
+                    Text(
+                      'বিজ্ঞাপন অটো প্লে করার মাধ্যমে খুব সহজেই কাজ সম্পন্ন করুন। এই প্রিমিয়াম ফিচারটি আনলক করতে নিচের নম্বরে সাবস্ক্রিপশন পেমেন্ট করুন।',
+                      style: getMediumStyle(
+                        fontSize: 14,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.7)
+                            : cs.onSurface.withValues(alpha: 0.7),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Dynamic Price Section
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.amber.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.monetization_on_outlined,
+                            color: Colors.amber.shade800,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'সাবস্ক্রিপশন ফি: ',
+                            style: getMediumStyle(
+                              fontSize: 15,
+                              color: isDark ? Colors.white : cs.onSurface,
+                            ),
+                          ),
+                          if (snapshot.connectionState == ConnectionState.waiting)
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.amber),
+                              ),
+                            )
+                          else
+                            Text(
+                              priceText,
+                              style: getBoldStyle(
+                                fontSize: 18,
+                                color: Colors.amber.shade800,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Payment Methods Label
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cs.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'বিকাশ • নগদ • রকেট • উপায়',
+                            style: getBoldStyle(fontSize: 12, color: cs.primary),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Number Field with Copy Button
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? cs.onSurface.withValues(alpha: 0.05)
+                            : cs.primaryContainer,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: cs.primary.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'পার্সোনাল নম্বর',
+                                style: getRegularStyle(
+                                  fontSize: 11,
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.5)
+                                      : cs.onSurface.withValues(alpha: 0.5),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '01401011049',
+                                style: getBoldStyle(
+                                  fontSize: 18,
+                                  color: isDark ? Colors.white : cs.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              Clipboard.setData(
+                                const ClipboardData(text: '01401011049'),
+                              );
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('নম্বরটি কপি করা হয়েছে!'),
+                                  backgroundColor: cs.primary,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: Icon(Icons.copy_rounded, color: cs.primary),
+                            tooltip: 'কপি করুন',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Instructions
+                    Text(
+                      'টাকা পাঠানোর পর ট্রানজেকশন আইডি এবং আপনার ইউজারনেম সহ এডমিনের সাথে যোগাযোগ করুন।',
+                      style: getRegularStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.5)
+                            : cs.onSurface.withValues(alpha: 0.5),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Action Buttons
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: cs.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 0,
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          'বন্ধ করুন',
+                          style: getBoldStyle(fontSize: 15, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         );
       },
