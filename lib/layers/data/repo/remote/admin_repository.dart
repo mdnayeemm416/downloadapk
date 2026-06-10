@@ -2,6 +2,8 @@ import 'package:adnetwork/config/api_endpoints.dart';
 import 'package:adnetwork/core/services/api_client.dart';
 import 'package:adnetwork/layers/data/model/user_model.dart';
 import 'package:adnetwork/layers/data/model/device_association_model.dart';
+import 'package:adnetwork/layers/data/model/client_override_model.dart';
+import 'package:adnetwork/layers/data/model/finance_summary_model.dart';
 import 'package:adnetwork/layers/dto/api_response.dart';
 
 class AdminRepository {
@@ -143,10 +145,19 @@ class AdminRepository {
   }
 
   /// PATCH /admin/users/:id/subscription
-  Future<ApiResponse<dynamic>> updateSubscription(String userId, int autolike) async {
+  Future<ApiResponse<dynamic>> updateSubscription(
+    String userId,
+    int autolike, {
+    int? isFree,
+    String? paymentMethod,
+  }) async {
     return _api.patch(
       ApiEndpoints.adminUpdateSubscription(userId),
-      body: {'autolike': autolike},
+      body: {
+        'autolike': autolike,
+        if (isFree != null) 'is_free': isFree,
+        if (paymentMethod != null) 'payment_method': paymentMethod,
+      },
     );
   }
 
@@ -157,6 +168,120 @@ class AdminRepository {
       body: {
         'userIds': userIds,
         'autolike': autolike,
+      },
+    );
+  }
+
+  /// GET /api/getprice
+  Future<ApiResponse<double>> getSubscriptionPrice({String? namespace}) async {
+    return _api.get<double>(
+      ApiEndpoints.getPrice,
+      queryParams: namespace != null ? {'namespace': namespace} : null,
+      fromJsonModel: (json) {
+        if (json is Map && json.containsKey('price')) {
+          final p = json['price'];
+          if (p is num) return p.toDouble();
+          return double.tryParse(p.toString()) ?? 0.0;
+        }
+        if (json is num) return json.toDouble();
+        return double.tryParse(json.toString()) ?? 0.0;
+      },
+    );
+  }
+
+  /// POST /api/setprice
+  Future<ApiResponse<dynamic>> setSubscriptionPrice(double price, {String? appname}) async {
+    return _api.post(
+      ApiEndpoints.setPrice,
+      body: {
+        'price': price,
+        if (appname != null) 'appname': appname,
+      },
+    );
+  }
+
+  /// GET /api/admin/clients
+  Future<ApiResponse<ClientOverrideModel>> getClientOverrides({String? appname}) async {
+    return _api.get<ClientOverrideModel>(
+      ApiEndpoints.adminClients,
+      queryParams: appname != null ? {'appname': appname} : null,
+      fromJsonModel: (json) => ClientOverrideModel.fromJson(json as Map<String, dynamic>),
+    );
+  }
+
+  /// POST /api/admin/clients
+  Future<ApiResponse<dynamic>> createClientOverride({
+    required String clientName,
+    required String status,
+    String? appname,
+  }) async {
+    return _api.post(
+      ApiEndpoints.adminClients,
+      body: {
+        'client_name': clientName,
+        'status': status,
+        if (appname != null) 'appname': appname,
+      },
+    );
+  }
+
+  /// PATCH /api/admin/clients/:id
+  Future<ApiResponse<dynamic>> updateClientOverride(
+    String id, {
+    String? clientName,
+    String? status,
+    String? appname,
+  }) async {
+    return _api.patch(
+      ApiEndpoints.adminClientById(id),
+      body: {
+        if (clientName != null) 'client_name': clientName,
+        if (status != null) 'status': status,
+        if (appname != null) 'appname': appname,
+      },
+    );
+  }
+
+  /// DELETE /api/admin/clients/:id
+  Future<ApiResponse<dynamic>> deleteClientOverride(String id) async {
+    return _api.delete(
+      ApiEndpoints.adminClientById(id),
+    );
+  }
+
+  /// GET /api/admin/finance/summary
+  Future<ApiResponse<FinanceSummaryModel>> getFinanceSummary({
+    required String cycle,
+    String? namespace,
+  }) async {
+    return _api.get<FinanceSummaryModel>(
+      ApiEndpoints.financeSummary,
+      queryParams: {
+        'cycle': cycle,
+        if (namespace != null) 'namespace': namespace,
+      },
+      fromJsonModel: (json) => FinanceSummaryModel.fromJson(json as Map<String, dynamic>),
+    );
+  }
+
+  /// POST /api/admin/finance/payouts
+  Future<ApiResponse<dynamic>> logPartnerPayout({
+    required double shakilAmount,
+    required double nayeemAmount,
+    required double rashedAmount,
+    required String cycle,
+    String? namespace,
+    String? notes,
+  }) async {
+    return _api.post(
+      ApiEndpoints.financePayouts,
+      body: {
+        'shakil_amount': shakilAmount,
+        'nayeem_amount': nayeemAmount,
+        'rashed_amount': rashedAmount,
+        'cycle': cycle,
+        if (namespace != null) 'namespace': namespace,
+        if (notes != null) 'notes': notes,
       },
     );
   }

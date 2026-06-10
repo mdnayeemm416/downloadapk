@@ -269,6 +269,19 @@ class _HomePageState extends State<HomePage> {
                                   );
                                 },
                               ),
+                              if (user?.role == 'admin')
+                                _Item(
+                                  icon: Icons.account_balance_wallet_rounded,
+                                  label: 'Finance',
+                                  active: false,
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/admin/finance',
+                                    );
+                                  },
+                                ),
                               _Item(
                                 icon: Icons.campaign_rounded,
                                 label: 'Manage Notices',

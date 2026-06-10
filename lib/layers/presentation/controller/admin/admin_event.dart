@@ -115,9 +115,11 @@ class ToggleUserSelection extends AdminEvent {
 class UpdateSubscription extends AdminEvent {
   final String userId;
   final int autolike;
-  const UpdateSubscription(this.userId, this.autolike);
+  final int? isFree;
+  final String? paymentMethod;
+  const UpdateSubscription(this.userId, this.autolike, {this.isFree, this.paymentMethod});
   @override
-  List<Object?> get props => [userId, autolike];
+  List<Object?> get props => [userId, autolike, isFree, paymentMethod];
 }
 
 class BulkUpdateSubscription extends AdminEvent {

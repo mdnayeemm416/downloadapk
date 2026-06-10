@@ -11,6 +11,10 @@ class UserModel {
   final int? isBlocked;
   final int? resetRequested;
   final int? autolike;
+  final int? isFreeSubscription;
+  final String? paymentMethod;
+  final String? subscriptionToggledBy;
+  final DateTime? subscriptionStartedAt;
   int followersCount;
   int followingCount;
   int linkCount;
@@ -30,6 +34,10 @@ class UserModel {
     this.isBlocked,
     this.resetRequested,
     this.autolike,
+    this.isFreeSubscription,
+    this.paymentMethod,
+    this.subscriptionToggledBy,
+    this.subscriptionStartedAt,
     this.followersCount = 0,
     this.followingCount = 0,
     this.linkCount = 0,
@@ -53,6 +61,20 @@ class UserModel {
       autolike: json['subscription'] != null 
           ? json['subscription']['autolike'] as int? 
           : json['autolike'] as int?,
+      isFreeSubscription: json['subscription'] != null
+          ? json['subscription']['is_free_subscription'] as int?
+          : json['is_free_subscription'] as int?,
+      paymentMethod: json['subscription'] != null
+          ? json['subscription']['payment_method'] as String?
+          : json['payment_method'] as String?,
+      subscriptionToggledBy: json['subscription'] != null
+          ? json['subscription']['subscription_toggled_by'] as String?
+          : json['subscription_toggled_by'] as String?,
+      subscriptionStartedAt: json['subscription'] != null && json['subscription']['subscription_started_at'] != null
+          ? DateTime.tryParse(json['subscription']['subscription_started_at'].toString())
+          : json['subscription_started_at'] != null
+              ? DateTime.tryParse(json['subscription_started_at'].toString())
+              : null,
       followersCount: (json['follower_count'] as int?) ?? (json['followers_count'] as int?) ?? 0,
       followingCount: (json['following_count'] as int?) ?? 0,
       linkCount: (json['link_count'] as int?) ?? 0,
@@ -78,6 +100,10 @@ class UserModel {
     'is_blocked': isBlocked,
     'reset_requested': resetRequested,
     'autolike': autolike,
+    'is_free_subscription': isFreeSubscription,
+    'payment_method': paymentMethod,
+    'subscription_toggled_by': subscriptionToggledBy,
+    'subscription_started_at': subscriptionStartedAt?.toIso8601String(),
     'followers_count': followersCount,
     'following_count': followingCount,
     'link_count': linkCount,
@@ -97,6 +123,10 @@ class UserModel {
     int? isBlocked,
     int? resetRequested,
     int? autolike,
+    int? isFreeSubscription,
+    String? paymentMethod,
+    String? subscriptionToggledBy,
+    DateTime? subscriptionStartedAt,
     int? followersCount,
     int? followingCount,
     int? linkCount,
@@ -116,6 +146,10 @@ class UserModel {
       isBlocked: isBlocked ?? this.isBlocked,
       resetRequested: resetRequested ?? this.resetRequested,
       autolike: autolike ?? this.autolike,
+      isFreeSubscription: isFreeSubscription ?? this.isFreeSubscription,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      subscriptionToggledBy: subscriptionToggledBy ?? this.subscriptionToggledBy,
+      subscriptionStartedAt: subscriptionStartedAt ?? this.subscriptionStartedAt,
       followersCount: followersCount ?? this.followersCount,
       followingCount: followingCount ?? this.followingCount,
       linkCount: linkCount ?? this.linkCount,

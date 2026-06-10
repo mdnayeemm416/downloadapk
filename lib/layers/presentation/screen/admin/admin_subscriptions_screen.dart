@@ -5,7 +5,6 @@ import 'package:adnetwork/layers/presentation/controller/admin/admin_bloc.dart';
 import 'package:adnetwork/layers/presentation/widget/user_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 
 class AdminSubscriptionsScreen extends StatelessWidget {
   const AdminSubscriptionsScreen({super.key});
@@ -21,8 +20,32 @@ class AdminSubscriptionsScreen extends StatelessWidget {
   }
 }
 
-class _AdminSubscriptionsScreenBody extends StatelessWidget {
+enum SubscriptionTab {
+  all,
+  nonSubscribe,
+  subscribe,
+  free,
+}
+
+class _TabItem {
+  final SubscriptionTab type;
+  final String label;
+  final IconData icon;
+
+  const _TabItem(this.type, this.label, this.icon);
+}
+
+class _AdminSubscriptionsScreenBody extends StatefulWidget {
   const _AdminSubscriptionsScreenBody();
+
+  @override
+  State<_AdminSubscriptionsScreenBody> createState() =>
+      _AdminSubscriptionsScreenBodyState();
+}
+
+class _AdminSubscriptionsScreenBodyState
+    extends State<_AdminSubscriptionsScreenBody> {
+  SubscriptionTab _selectedTab = SubscriptionTab.all;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +84,30 @@ class _AdminSubscriptionsScreenBody extends StatelessWidget {
         }
       },
       builder: (context, state) {
+        final filteredUsers = state.allUsers.where((u) {
+          // 1. Tab filter
+          switch (_selectedTab) {
+            case SubscriptionTab.all:
+              break;
+            case SubscriptionTab.nonSubscribe:
+              if (u.autolike == 1) return false;
+              break;
+            case SubscriptionTab.subscribe:
+              if (u.autolike != 1) return false;
+              break;
+            case SubscriptionTab.free:
+              if (u.isFreeSubscription != 1 && u.role != 'admin' && u.role != 'moderator') return false;
+              break;
+          }
+
+          // 2. Search filter
+          if (state.searchQuery.isEmpty) return true;
+          final q = state.searchQuery.toLowerCase();
+          final n = u.username?.toLowerCase() ?? '';
+          final e = u.email?.toLowerCase() ?? '';
+          return n.contains(q) || e.contains(q);
+        }).toList();
+
         return Scaffold(
           backgroundColor: cs.surface,
           appBar: AppBar(
@@ -98,6 +145,10 @@ class _AdminSubscriptionsScreenBody extends StatelessWidget {
             child: Column(
               children: [
                 const SizedBox(height: 8),
+
+                // ── 5 Filtering Tabs ──
+                _buildTabs(context, cs, isDark),
+                const SizedBox(height: 12),
 
                 // ── Search Bar ──
                 Padding(
@@ -312,7 +363,7 @@ class _AdminSubscriptionsScreenBody extends StatelessWidget {
                                   Icon(Icons.people_rounded, size: 14, color: cs.primary),
                                   const SizedBox(width: 6),
                                   Text(
-                                    '${state.allUsers.length} Users',
+                                    '${filteredUsers.length} Users',
                                     style: getMediumStyle(fontSize: 12, color: cs.primary),
                                   ),
                                 ],
@@ -326,7 +377,7 @@ class _AdminSubscriptionsScreenBody extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                Expanded(child: _buildContent(context, state, cs, isDark)),
+                Expanded(child: _buildContent(context, state, filteredUsers, cs, isDark)),
               ],
             ),
           ),
@@ -335,9 +386,117 @@ class _AdminSubscriptionsScreenBody extends StatelessWidget {
     );
   }
 
+  Widget _buildTabs(BuildContext context, ColorScheme cs, bool isDark) {
+    final tabs = [
+      _TabItem(SubscriptionTab.all, 'All', Icons.people_outline_rounded),
+      _TabItem(
+        SubscriptionTab.nonSubscribe,
+        'Non Subscribe',
+        Icons.unsubscribe_outlined,
+      ),
+      _TabItem(
+        SubscriptionTab.subscribe,
+        'Subscribe',
+        Icons.thumb_up_alt_outlined,
+      ),
+      _TabItem(SubscriptionTab.free, 'Free', Icons.card_giftcard_rounded),
+    ];
+
+    return SizedBox(
+      height: 44,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        physics: const BouncingScrollPhysics(),
+        itemCount: tabs.length,
+        itemBuilder: (context, index) {
+          final tab = tabs[index];
+          final isSelected = _selectedTab == tab.type;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedTab = tab.type;
+                  });
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: isSelected
+                        ? LinearGradient(
+                            colors: [
+                              cs.primary,
+                              cs.primary.withValues(alpha: 0.85),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: isSelected
+                        ? null
+                        : (isDark
+                            ? cs.onSurface.withValues(alpha: .04)
+                            : cs.primaryContainer),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? Colors.transparent
+                          : cs.primary.withValues(
+                              alpha: isDark ? .12 : .08,
+                            ),
+                    ),
+                    boxShadow: [
+                      if (isSelected)
+                        BoxShadow(
+                          color: cs.primary.withValues(alpha: .25),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        tab.icon,
+                        size: 16,
+                        color: isSelected
+                            ? cs.onPrimary
+                            : cs.onSurface.withValues(alpha: .6),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        tab.label,
+                        style: getMediumStyle(
+                          fontSize: 12,
+                          color: isSelected
+                              ? cs.onPrimary
+                              : cs.onSurface.withValues(alpha: .75),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildContent(
     BuildContext context,
     AdminState state,
+    List<UserModel> users,
     ColorScheme cs,
     bool isDark,
   ) {
@@ -408,14 +567,6 @@ class _AdminSubscriptionsScreenBody extends StatelessWidget {
         ),
       );
     }
-
-    final users = state.allUsers.where((u) {
-      if (state.searchQuery.isEmpty) return true;
-      final q = state.searchQuery.toLowerCase();
-      final n = u.username?.toLowerCase() ?? '';
-      final e = u.email?.toLowerCase() ?? '';
-      return n.contains(q) || e.contains(q);
-    }).toList();
 
     if (users.isEmpty) {
       return Center(
@@ -672,7 +823,14 @@ class _UserManagementCard extends StatelessWidget {
     final id = user.id ?? '';
     switch (action) {
       case 'enable-autolike':
-        bloc.add(UpdateSubscription(id, 1));
+        showDialog(
+          context: context,
+          builder: (ctx) => _UserSubConfigDialog(
+            userId: id,
+            username: user.username ?? '',
+            bloc: bloc,
+          ),
+        );
         break;
       case 'disable-autolike':
         bloc.add(UpdateSubscription(id, 0));
@@ -808,6 +966,193 @@ class _BulkActionButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  USER SUB CONFIGURATION DIALOG
+// ══════════════════════════════════════════════════════════
+class _UserSubConfigDialog extends StatefulWidget {
+  final String userId;
+  final String username;
+  final AdminBloc bloc;
+
+  const _UserSubConfigDialog({
+    required this.userId,
+    required this.username,
+    required this.bloc,
+  });
+
+  @override
+  State<_UserSubConfigDialog> createState() => _UserSubConfigDialogState();
+}
+
+class _UserSubConfigDialogState extends State<_UserSubConfigDialog> {
+  bool _isFree = false;
+  String _selectedMethod = 'bkash';
+  final _customMethodCtrl = TextEditingController();
+
+  final List<String> _paymentMethods = [
+    'bkash',
+    'nagad',
+    'roket',
+    'upay',
+    'cash',
+    'free',
+    'other'
+  ];
+
+  @override
+  void dispose() {
+    _customMethodCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AlertDialog(
+      backgroundColor: cs.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text(
+        'Configure Subscription',
+        style: getBoldStyle(fontSize: 18, color: cs.onSurface),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Configure subscription options for ${widget.username}',
+              style: getRegularStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: .5)),
+            ),
+            const SizedBox(height: 16),
+
+            // Free Switch
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Free Subscription',
+                  style: getBoldStyle(fontSize: 14, color: cs.onSurface),
+                ),
+                Switch(
+                  value: _isFree,
+                  activeColor: cs.primary,
+                  onChanged: (val) {
+                    setState(() {
+                      _isFree = val;
+                      if (val) {
+                        _selectedMethod = 'free';
+                      } else {
+                        _selectedMethod = 'bkash';
+                      }
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // Payment Method selector
+            Text(
+              'Payment Method',
+              style: getBoldStyle(fontSize: 13, color: cs.onSurface),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: isDark ? cs.onSurface.withValues(alpha: .04) : cs.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cs.onSurface.withValues(alpha: .05)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedMethod,
+                  isExpanded: true,
+                  dropdownColor: isDark ? const Color(0xFF2A2A3A) : cs.surface,
+                  items: _paymentMethods.map((m) {
+                    return DropdownMenuItem<String>(
+                      value: m,
+                      child: Text(
+                        m.toUpperCase(),
+                        style: getBoldStyle(fontSize: 13, color: cs.onSurface),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: _isFree
+                      ? null
+                      : (val) {
+                          if (val != null) {
+                            setState(() => _selectedMethod = val);
+                          }
+                        },
+                ),
+              ),
+            ),
+
+            if (_selectedMethod == 'other') ...[
+              const SizedBox(height: 12),
+              Text(
+                'Specify Payment Method',
+                style: getBoldStyle(fontSize: 12, color: cs.onSurface),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? cs.onSurface.withValues(alpha: .04) : cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cs.onSurface.withValues(alpha: .05)),
+                ),
+                child: TextField(
+                  controller: _customMethodCtrl,
+                  style: getMediumStyle(fontSize: 13, color: cs.onSurface),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Bank Transfer',
+                    hintStyle: getRegularStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: .35)),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancel', style: getBoldStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: .5))),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final method = _selectedMethod == 'other'
+                ? _customMethodCtrl.text.trim()
+                : _selectedMethod;
+
+            widget.bloc.add(
+              UpdateSubscription(
+                widget.userId,
+                1,
+                isFree: _isFree ? 1 : 0,
+                paymentMethod: method.isEmpty ? 'other' : method,
+              ),
+            );
+            Navigator.pop(context);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: cs.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: Text('Enable', style: getBoldStyle(fontSize: 14, color: Colors.white)),
+        ),
+      ],
     );
   }
 }

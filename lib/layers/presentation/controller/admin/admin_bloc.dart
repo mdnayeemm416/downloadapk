@@ -124,7 +124,12 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
   Future<void> _onUpdateSubscription(UpdateSubscription event, Emitter<AdminState> emit) async {
     emit(state.copyWith(actionUserId: event.userId, actionType: 'update_sub'));
     try {
-      final response = await adminRepository.updateSubscription(event.userId, event.autolike);
+      final response = await adminRepository.updateSubscription(
+        event.userId,
+        event.autolike,
+        isFree: event.isFree,
+        paymentMethod: event.paymentMethod,
+      );
       if (response.isSuccess) {
         _updateUserInList(emit, event.userId, autolike: event.autolike);
         emit(state.copyWith(successMessage: 'Subscription updated', actionUserId: '', actionType: ''));

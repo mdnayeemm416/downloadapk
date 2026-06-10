@@ -59,4 +59,12 @@ class ApiEndpoints {
 
   // ──────────────────────────── Subscriptions ─────────────────────
   static const String checkSubscription = '/api/subscriptions/check';
+  static const String getPrice = '/api/getprice';
+  static const String setPrice = '/api/setprice';
+  static const String adminClients = '/api/admin/clients';
+  static String adminClientById(String id) => '/api/admin/clients/$id';
+
+  // ──────────────────────────── Finance ───────────────────────────
+  static const String financeSummary = '/api/admin/finance/summary';
+  static const String financePayouts = '/api/admin/finance/payouts';
 }
