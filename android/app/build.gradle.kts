@@ -46,10 +46,12 @@ android {
             val storeFileProp = keystoreProperties.getProperty("storeFile")
             val storePass = keystoreProperties.getProperty("storePassword")
 
-            if (alias != null && keyPass != null && storeFileProp != null && storePass != null) {
+            val storeFileObj = storeFileProp?.let { file(it) }
+
+            if (alias != null && keyPass != null && storeFileObj != null && storeFileObj.exists() && storePass != null) {
                 keyAlias = alias
                 keyPassword = keyPass
-                storeFile = file(storeFileProp)
+                storeFile = storeFileObj
                 storePassword = storePass
             } else {
                 val debugConfig = signingConfigs.getByName("debug")
