@@ -67,4 +67,5 @@ class ApiEndpoints {
   // ──────────────────────────── Finance ───────────────────────────
   static const String financeSummary = '/api/admin/finance/summary';
   static const String financePayouts = '/api/admin/finance/payouts';
+  static const String financeDailyDetail = '/api/admin/finance/daily-detail';
 }

@@ -17,6 +17,16 @@ class LoadFinanceSummary extends FinanceEvent {
   List<Object?> get props => [cycle, namespace];
 }
 
+class LoadDailyDetail extends FinanceEvent {
+  final String? date;
+  final String? namespace;
+
+  const LoadDailyDetail({this.date, this.namespace});
+
+  @override
+  List<Object?> get props => [date, namespace];
+}
+
 class LogPayout extends FinanceEvent {
   final double shakilAmount;
   final double nayeemAmount;

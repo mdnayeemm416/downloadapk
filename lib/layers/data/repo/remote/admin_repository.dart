@@ -4,6 +4,7 @@ import 'package:adnetwork/layers/data/model/user_model.dart';
 import 'package:adnetwork/layers/data/model/device_association_model.dart';
 import 'package:adnetwork/layers/data/model/client_override_model.dart';
 import 'package:adnetwork/layers/data/model/finance_summary_model.dart';
+import 'package:adnetwork/layers/data/model/finance_daily_detail_model.dart';
 import 'package:adnetwork/layers/dto/api_response.dart';
 
 class AdminRepository {
@@ -258,9 +259,26 @@ class AdminRepository {
       ApiEndpoints.financeSummary,
       queryParams: {
         'cycle': cycle,
-        if (namespace != null) 'namespace': namespace,
+        if (namespace != null && namespace != 'all') 'namespace': namespace,
+        if (namespace != null && namespace != 'all') 'appname': namespace,
       },
       fromJsonModel: (json) => FinanceSummaryModel.fromJson(json as Map<String, dynamic>),
+    );
+  }
+
+  /// GET /api/admin/finance/daily-detail
+  Future<ApiResponse<DailyDetailModel>> getDailyDetail({
+    String? date,
+    String? namespace,
+  }) async {
+    return _api.get<DailyDetailModel>(
+      ApiEndpoints.financeDailyDetail,
+      queryParams: {
+        if (date != null && date.isNotEmpty) 'date': date,
+        if (namespace != null && namespace != 'all') 'namespace': namespace,
+        if (namespace != null && namespace != 'all') 'appname': namespace,
+      },
+      fromJsonModel: (json) => DailyDetailModel.fromJson(json as Map<String, dynamic>),
     );
   }
 
@@ -280,7 +298,8 @@ class AdminRepository {
         'nayeem_amount': nayeemAmount,
         'rashed_amount': rashedAmount,
         'cycle': cycle,
-        if (namespace != null) 'namespace': namespace,
+        if (namespace != null && namespace != 'all') 'namespace': namespace,
+        'appname': (namespace != null && namespace != 'all') ? namespace : 'adnetworkpro',
         if (notes != null) 'notes': notes,
       },
     );

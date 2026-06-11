@@ -395,10 +395,14 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                           ),
-                          // Mini WebView at the bottom (35px) for background link viewing when not in PIP
-                          if (!isPip) const LinkQueueOverlay(isPipMode: false),
                         ],
                       ),
+                      if (!isPip)
+                        const Positioned(
+                          left: 16,
+                          bottom: 16,
+                          child: LinkQueueOverlay(isPipMode: false),
+                        ),
                       if (isPip)
                         Positioned.fill(
                           child: Container(

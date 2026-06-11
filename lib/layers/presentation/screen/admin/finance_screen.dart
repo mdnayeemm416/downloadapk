@@ -1,5 +1,6 @@
 import 'package:adnetwork/config/theme/styles_manager.dart';
 import 'package:adnetwork/layers/data/model/finance_summary_model.dart';
+import 'package:adnetwork/layers/data/model/finance_daily_detail_model.dart';
 import 'package:adnetwork/layers/data/repo/remote/admin_repository.dart';
 import 'package:adnetwork/layers/presentation/controller/finance/finance_bloc.dart';
 import 'package:flutter/material.dart';
@@ -13,9 +14,13 @@ class FinanceScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => FinanceBloc(adminRepository: AdminRepository())
-        ..add(LoadFinanceSummary(
-          cycle: DateFormat('yyyy-MM').format(DateTime.now()),
-        )),
+        ..add(
+          LoadFinanceSummary(
+            cycle: DateFormat('yyyy-MM').format(DateTime.now()),
+            namespace: 'adnetworkpro',
+          ),
+        )
+        ..add(const LoadDailyDetail(namespace: 'adnetworkpro')),
       child: const _FinanceScreenBody(),
     );
   }
@@ -31,6 +36,8 @@ class _FinanceScreenBody extends StatefulWidget {
 class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
   late String _selectedCycle;
   final List<String> _cycles = [];
+  final String _selectedNamespace = 'adnetworkpro';
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -45,243 +52,595 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _loadAllData(String cycle, String namespace) {
+    context.read<FinanceBloc>().add(
+      LoadFinanceSummary(cycle: cycle, namespace: namespace),
+    );
+    context.read<FinanceBloc>().add(
+      LoadDailyDetail(date: null, namespace: namespace),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: cs.surface,
-      appBar: AppBar(
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
         backgroundColor: cs.surface,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: cs.onSurface),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [cs.primary, cs.secondary],
+        appBar: AppBar(
+          backgroundColor: cs.surface,
+          surfaceTintColor: Colors.transparent,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_rounded, color: cs.onSurface),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [cs.primary, cs.secondary]),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                borderRadius: BorderRadius.circular(8),
+                child: Icon(
+                  Icons.account_balance_wallet_rounded,
+                  size: 18,
+                  color: cs.onPrimary,
+                ),
               ),
-              child: Icon(
-                Icons.account_balance_wallet_rounded,
-                size: 18,
-                color: cs.onPrimary,
+              const SizedBox(width: 10),
+              Text(
+                'Finance',
+                style: getBoldStyle(fontSize: 18, color: cs.onSurface),
               ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Finance Summary',
-              style: getBoldStyle(fontSize: 18, color: cs.onSurface),
+            ],
+          ),
+          bottom: TabBar(
+            indicatorColor: cs.primary,
+            labelColor: cs.primary,
+            unselectedLabelColor: cs.onSurface.withValues(alpha: 0.6),
+            labelStyle: getBoldStyle(fontSize: 13),
+            unselectedLabelStyle: getMediumStyle(fontSize: 13),
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.summarize_rounded, size: 18),
+                text: 'Monthly Summary',
+              ),
+              Tab(
+                icon: Icon(Icons.explore_rounded, size: 18),
+                text: 'Session Explorer',
+              ),
+            ],
+          ),
+          actions: [
+            // Cycle Selector Dropdown
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? cs.onSurface.withValues(alpha: .05)
+                      : cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cs.primary.withValues(alpha: .15)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    key: const ValueKey('cycle_selector'),
+                    value: _selectedCycle,
+                    dropdownColor: isDark
+                        ? const Color(0xFF2A2A3A)
+                        : cs.surface,
+                    icon: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: cs.primary,
+                      size: 18,
+                    ),
+                    items: _cycles.map((cycle) {
+                      final date = DateFormat('yyyy-MM').parse(cycle);
+                      final label = DateFormat('MMM yyyy').format(date);
+                      return DropdownMenuItem<String>(
+                        value: cycle,
+                        child: Text(
+                          label,
+                          style: getBoldStyle(
+                            fontSize: 12,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _selectedCycle = val;
+                        });
+                        _loadAllData(val, _selectedNamespace);
+                      }
+                    },
+                  ),
+                ),
+              ),
             ),
           ],
         ),
-        actions: [
-          // Cycle Selector Dropdown
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        floatingActionButton: FloatingActionButton.extended(
+          key: const ValueKey('log_payout_fab'),
+          onPressed: () => _showLogPayoutDialog(context),
+          backgroundColor: cs.primary,
+          icon: const Icon(Icons.add_rounded, color: Colors.white),
+          label: Text(
+            'Log Payout',
+            style: getBoldStyle(fontSize: 14, color: Colors.white),
+          ),
+        ),
+        body: BlocConsumer<FinanceBloc, FinanceState>(
+          listenWhen: (prev, curr) =>
+              prev.successMessage != curr.successMessage ||
+              prev.errorMessage != curr.errorMessage,
+          listener: (context, state) {
+            if (state.successMessage.isNotEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.successMessage),
+                  backgroundColor: cs.secondary,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              );
+              context.read<FinanceBloc>().add(const ClearFinanceMessages());
+            }
+            if (state.errorMessage.isNotEmpty &&
+                state.status != FinanceStatus.loading &&
+                state.detailStatus != FinanceStatus.loading) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.errorMessage),
+                  backgroundColor: cs.error,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              );
+              context.read<FinanceBloc>().add(const ClearFinanceMessages());
+            }
+          },
+          builder: (context, state) {
+            return TabBarView(
+              children: [
+                _buildMonthlySummaryTab(context, state, cs, isDark),
+                _buildSessionExplorerTab(context, state, cs, isDark),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMonthlySummaryTab(
+    BuildContext context,
+    FinanceState state,
+    ColorScheme cs,
+    bool isDark,
+  ) {
+    if (state.status == FinanceStatus.loading && state.summary == null) {
+      return Center(child: CircularProgressIndicator(color: cs.primary));
+    }
+
+    if (state.status == FinanceStatus.error && state.summary == null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline_rounded, size: 48, color: cs.error),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load finance summary',
+              style: getBoldStyle(fontSize: 16, color: cs.onSurface),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              state.errorMessage,
+              style: getRegularStyle(
+                fontSize: 12,
+                color: cs.onSurface.withValues(alpha: .5),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => context.read<FinanceBloc>().add(
+                LoadFinanceSummary(
+                  cycle: _selectedCycle,
+                  namespace: _selectedNamespace,
+                ),
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final summary = state.summary;
+    if (summary == null) {
+      return Center(
+        child: Text(
+          'No finance details available.',
+          style: getRegularStyle(fontSize: 14, color: cs.onSurface),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        _loadAllData(_selectedCycle, _selectedNamespace);
+        await Future.delayed(const Duration(milliseconds: 500));
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Premium Key Metrics Dashboard ──
+            _buildRevenueHeaderCard(summary.stats, cs, isDark),
+            const SizedBox(height: 16),
+
+            // _buildSubscriberSection(summary.stats, cs, isDark),
+            // const SizedBox(height: 16),
+            _buildBreakdownSection(summary.stats, cs, isDark),
+            const SizedBox(height: 16),
+
+            // ── Stakeholder Split Shares section ──
+            _buildPartnerSplitSection(summary.stats, cs, isDark),
+            const SizedBox(height: 24),
+
+            // ── Logged payouts title ──
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Payout Distribution History',
+                  style: getBoldStyle(fontSize: 16, color: cs.onSurface),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: .1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${summary.payouts.length} Logs',
+                    style: getBoldStyle(fontSize: 11, color: cs.primary),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            if (summary.payouts.isEmpty)
+              _buildEmptyPayoutsPlaceholder(cs, isDark)
+            else
+              ...List.generate(
+                summary.payouts.length,
+                (i) => _PayoutCard(
+                  payout: summary.payouts[i],
+                  cs: cs,
+                  isDark: isDark,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSessionExplorerTab(
+    BuildContext context,
+    FinanceState state,
+    ColorScheme cs,
+    bool isDark,
+  ) {
+    if (state.detailStatus == FinanceStatus.loading &&
+        state.dailyDetail == null) {
+      return Center(child: CircularProgressIndicator(color: cs.primary));
+    }
+
+    if (state.detailStatus == FinanceStatus.error &&
+        state.dailyDetail == null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline_rounded, size: 48, color: cs.error),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load session details',
+              style: getBoldStyle(fontSize: 16, color: cs.onSurface),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              state.errorMessage,
+              style: getRegularStyle(
+                fontSize: 12,
+                color: cs.onSurface.withValues(alpha: .5),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                context.read<FinanceBloc>().add(
+                  LoadDailyDetail(date: null, namespace: _selectedNamespace),
+                );
+              },
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final dailyDetail = state.dailyDetail;
+    if (dailyDetail == null) {
+      return Center(
+        child: Text(
+          'No session details available.',
+          style: getRegularStyle(fontSize: 14, color: cs.onSurface),
+        ),
+      );
+    }
+
+    // Filtered list based on search text input
+    final filteredSubscribers = dailyDetail.subscribers.where((sub) {
+      final query = _searchController.text.toLowerCase();
+      return sub.username.toLowerCase().contains(query) ||
+          (sub.email ?? '').toLowerCase().contains(query);
+    }).toList();
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        context.read<FinanceBloc>().add(
+          LoadDailyDetail(date: null, namespace: _selectedNamespace),
+        );
+        await Future.delayed(const Duration(milliseconds: 500));
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Date Selection Card ──
+            _buildDateSelectionCard(context, dailyDetail, cs, isDark),
+            const SizedBox(height: 20),
+
+            // ── Subscribers Explorer Title & Search ──
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Subscribers List',
+                  style: getBoldStyle(fontSize: 15, color: cs.onSurface),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: .1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${filteredSubscribers.length} / ${dailyDetail.subscribers.length}',
+                    style: getBoldStyle(fontSize: 11, color: cs.primary),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Search Bar
+            Container(
               decoration: BoxDecoration(
-                color: isDark ? cs.onSurface.withValues(alpha: .05) : cs.primaryContainer,
+                color: isDark
+                    ? cs.onSurface.withValues(alpha: .04)
+                    : cs.primaryContainer,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: cs.primary.withValues(alpha: .15),
+                border: Border.all(color: cs.onSurface.withValues(alpha: .05)),
+              ),
+              child: TextFormField(
+                key: const ValueKey('subscriber_search_field'),
+                controller: _searchController,
+                onChanged: (val) {
+                  setState(() {});
+                },
+                style: getMediumStyle(fontSize: 13, color: cs.onSurface),
+                decoration: InputDecoration(
+                  hintText: 'Search subscriber by username...',
+                  hintStyle: getRegularStyle(
+                    fontSize: 12,
+                    color: cs.onSurface.withValues(alpha: .35),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: cs.primary,
+                    size: 18,
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, size: 16),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {});
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedCycle,
-                  dropdownColor: isDark ? const Color(0xFF2A2A3A) : cs.surface,
-                  icon: Icon(Icons.keyboard_arrow_down_rounded, color: cs.primary, size: 18),
-                  items: _cycles.map((cycle) {
-                    final date = DateFormat('yyyy-MM').parse(cycle);
-                    final label = DateFormat('MMM yyyy').format(date);
-                    return DropdownMenuItem<String>(
-                      value: cycle,
-                      child: Text(
-                        label,
-                        style: getBoldStyle(fontSize: 13, color: cs.onSurface),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() {
-                        _selectedCycle = val;
-                      });
-                      context.read<FinanceBloc>().add(LoadFinanceSummary(cycle: val));
-                    }
-                  },
-                ),
+            ),
+            const SizedBox(height: 12),
+
+            // Subscribers List View (dynamic builder)
+            if (filteredSubscribers.isEmpty)
+              _buildEmptySubscribersPlaceholder(cs, isDark)
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: filteredSubscribers.length,
+                itemBuilder: (context, index) {
+                  final sub = filteredSubscribers[index];
+                  return _SubscriberCard(sub: sub, cs: cs, isDark: isDark);
+                },
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateSelectionCard(
+    BuildContext context,
+    DailyDetailModel dailyDetail,
+    ColorScheme cs,
+    bool isDark,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark
+            ? cs.onSurface.withValues(alpha: .03)
+            : cs.primaryContainer.withValues(alpha: .3),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cs.primary.withValues(alpha: .06)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: .1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.calendar_month_rounded,
+              color: cs.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'CURRENT ACTIVE OPEN SESSION',
+                  style: getBoldStyle(
+                    fontSize: 10,
+                    color: cs.onSurface.withValues(alpha: .5),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Active open billing session details',
+                  style: getBoldStyle(fontSize: 14, color: cs.onSurface),
+                ),
+                if (dailyDetail.startDate != null &&
+                    dailyDetail.endDate != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Session: ${dailyDetail.startDate} — ${dailyDetail.endDate}',
+                    style: getRegularStyle(
+                      fontSize: 11,
+                      color: cs.onSurface.withValues(alpha: .6),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showLogPayoutDialog(context),
-        backgroundColor: cs.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text(
-          'Log Payout',
-          style: getBoldStyle(fontSize: 14, color: Colors.white),
-        ),
+    );
+  }
+
+  Widget _buildEmptySubscribersPlaceholder(ColorScheme cs, bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark
+            ? cs.onSurface.withValues(alpha: .02)
+            : cs.primaryContainer.withValues(alpha: .1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.onSurface.withValues(alpha: .04)),
       ),
-      body: BlocConsumer<FinanceBloc, FinanceState>(
-        listenWhen: (prev, curr) =>
-            prev.successMessage != curr.successMessage ||
-            prev.errorMessage != curr.errorMessage,
-        listener: (context, state) {
-          if (state.successMessage.isNotEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.successMessage),
-                backgroundColor: cs.secondary,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            );
-            context.read<FinanceBloc>().add(const ClearFinanceMessages());
-          }
-          if (state.errorMessage.isNotEmpty && state.status != FinanceStatus.loading) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.errorMessage),
-                backgroundColor: cs.error,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            );
-            context.read<FinanceBloc>().add(const ClearFinanceMessages());
-          }
-        },
-        builder: (context, state) {
-          if (state.status == FinanceStatus.loading && state.summary == null) {
-            return Center(
-              child: CircularProgressIndicator(color: cs.primary),
-            );
-          }
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.search_off_rounded,
+            size: 28,
+            color: cs.onSurface.withValues(alpha: .3),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No matching subscribers found',
+            style: getBoldStyle(fontSize: 13, color: cs.onSurface),
+          ),
+        ],
+      ),
+    );
+  }
 
-          if (state.status == FinanceStatus.error && state.summary == null) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.error_outline_rounded, size: 48, color: cs.error),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Failed to load finance data',
-                    style: getBoldStyle(fontSize: 16, color: cs.onSurface),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    state.errorMessage,
-                    style: getRegularStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: .5)),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () => context
-                        .read<FinanceBloc>()
-                        .add(LoadFinanceSummary(cycle: _selectedCycle)),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final summary = state.summary;
-          if (summary == null) {
-            return Center(
-              child: Text(
-                'No finance details available.',
-                style: getRegularStyle(fontSize: 14, color: cs.onSurface),
-              ),
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              context.read<FinanceBloc>().add(LoadFinanceSummary(cycle: _selectedCycle));
-              await Future.delayed(const Duration(milliseconds: 500));
-            },
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
-              ),
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Premium Key Metrics Dashboard ──
-                  _buildRevenueHeaderCard(summary.stats, cs, isDark),
-                  const SizedBox(height: 16),
-
-                  _buildSubscriberSection(summary.stats, cs, isDark),
-                  const SizedBox(height: 16),
-
-                  _buildBreakdownSection(summary.stats, cs, isDark),
-                  const SizedBox(height: 16),
-
-                  // ── Stakeholder Split Shares section ──
-                  _buildPartnerSplitSection(summary.stats, cs, isDark),
-                  const SizedBox(height: 24),
-
-                  // ── Logged payouts title ──
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Payout Distribution History',
-                        style: getBoldStyle(fontSize: 16, color: cs.onSurface),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: cs.primary.withValues(alpha: .1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${summary.payouts.length} Logs',
-                          style: getBoldStyle(fontSize: 11, color: cs.primary),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (summary.payouts.isEmpty)
-                    _buildEmptyPayoutsPlaceholder(cs, isDark)
-                  else
-                    ...List.generate(
-                      summary.payouts.length,
-                      (i) => _PayoutCard(
-                        payout: summary.payouts[i],
-                        cs: cs,
-                        isDark: isDark,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          );
-        },
+  // ── Show dialog modal to log payouts ──
+  void _showLogPayoutDialog(BuildContext context) {
+    final bloc = context.read<FinanceBloc>();
+    showDialog(
+      context: context,
+      builder: (_) => BlocProvider.value(
+        value: bloc,
+        child: _LogPayoutDialog(
+          cycle: _selectedCycle,
+          namespace: _selectedNamespace,
+        ),
       ),
     );
   }
 
   // ── Revenue glassmorphic premium card ──
-  Widget _buildRevenueHeaderCard(FinanceStats stats, ColorScheme cs, bool isDark) {
+  Widget _buildRevenueHeaderCard(
+    FinanceStats stats,
+    ColorScheme cs,
+    bool isDark,
+  ) {
     final fmt = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
     return Container(
       width: double.infinity,
@@ -290,10 +649,7 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            cs.primary,
-            cs.secondary,
-          ],
+          colors: [cs.primary, cs.secondary],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
@@ -318,7 +674,10 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: .2),
                   borderRadius: BorderRadius.circular(12),
@@ -366,7 +725,10 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
                     const SizedBox(height: 4),
                     Text(
                       fmt.format(stats.totalRevenue),
-                      style: getSemiBoldStyle(fontSize: 20, color: Colors.white.withValues(alpha: .85)),
+                      style: getSemiBoldStyle(
+                        fontSize: 20,
+                        color: Colors.white.withValues(alpha: .85),
+                      ),
                     ),
                   ],
                 ),
@@ -413,7 +775,9 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
                       fmt.format(stats.unpaidBalance),
                       style: getBoldStyle(
                         fontSize: 16,
-                        color: stats.unpaidBalance > 0 ? Colors.orangeAccent : Colors.white,
+                        color: stats.unpaidBalance > 0
+                            ? Colors.orangeAccent
+                            : Colors.white,
                       ),
                     ),
                   ],
@@ -427,16 +791,20 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
   }
 
   // ── Subscribers details stats row ──
-  Widget _buildSubscriberSection(FinanceStats stats, ColorScheme cs, bool isDark) {
+  Widget _buildSubscriberSection(
+    FinanceStats stats,
+    ColorScheme cs,
+    bool isDark,
+  ) {
     Widget badge(String title, String count, IconData icon, Color color) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isDark ? cs.onSurface.withValues(alpha: .04) : cs.primaryContainer,
+          color: isDark
+              ? cs.onSurface.withValues(alpha: .04)
+              : cs.primaryContainer,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: cs.primary.withValues(alpha: .06),
-          ),
+          border: Border.all(color: cs.primary.withValues(alpha: .06)),
         ),
         child: Row(
           children: [
@@ -495,7 +863,11 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
   }
 
   // ── Subscription Scope & Payment Methods breakdown ──
-  Widget _buildBreakdownSection(FinanceStats stats, ColorScheme cs, bool isDark) {
+  Widget _buildBreakdownSection(
+    FinanceStats stats,
+    ColorScheme cs,
+    bool isDark,
+  ) {
     final fmt = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
     final breakdown = stats.subscriptionBreakdown;
 
@@ -507,11 +879,11 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? cs.onSurface.withValues(alpha: .03) : cs.primaryContainer.withValues(alpha: .3),
+        color: isDark
+            ? cs.onSurface.withValues(alpha: .03)
+            : cs.primaryContainer.withValues(alpha: .3),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: cs.primary.withValues(alpha: .06),
-        ),
+        border: Border.all(color: cs.primary.withValues(alpha: .06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -546,15 +918,35 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
               padding: const EdgeInsets.only(left: 12),
               child: Column(
                 children: [
-                  _buildSubBreakdownRow('Paid Users', '${breakdown.paidUsers}', cs),
+                  _buildSubBreakdownRow(
+                    'Paid Users',
+                    '${breakdown.paidUsers}',
+                    cs,
+                  ),
                   const SizedBox(height: 6),
-                  _buildSubBreakdownRow('Free Users', '${breakdown.freeUsers}', cs),
+                  _buildSubBreakdownRow(
+                    'Free Users',
+                    '${breakdown.freeUsers}',
+                    cs,
+                  ),
                   const SizedBox(height: 6),
-                  _buildSubBreakdownRow('Staff Subscriptions', '${breakdown.staffSubscriptions}', cs),
+                  _buildSubBreakdownRow(
+                    'Staff Subscriptions',
+                    '${breakdown.staffSubscriptions}',
+                    cs,
+                  ),
                   const SizedBox(height: 6),
-                  _buildSubBreakdownRow('Not Subscribed Users', '${breakdown.notSubscribed}', cs),
+                  _buildSubBreakdownRow(
+                    'Not Subscribed Users',
+                    '${breakdown.notSubscribed}',
+                    cs,
+                  ),
                   const SizedBox(height: 6),
-                  _buildSubBreakdownRow('Subscription Price', fmt.format(breakdown.subscriptionPrice), cs),
+                  _buildSubBreakdownRow(
+                    'Subscription Price',
+                    fmt.format(breakdown.subscriptionPrice),
+                    cs,
+                  ),
                 ],
               ),
             ),
@@ -570,7 +962,9 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
                   '${breakdown.outstandingCount}',
                   style: getBoldStyle(
                     fontSize: 13,
-                    color: breakdown.outstandingCount > 0 ? cs.error : cs.onSurface,
+                    color: breakdown.outstandingCount > 0
+                        ? cs.error
+                        : cs.onSurface,
                   ),
                 ),
               ],
@@ -597,68 +991,79 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
               style: getBoldStyle(fontSize: 13, color: cs.onSurface),
             ),
             const SizedBox(height: 12),
-            ...stats.paymentMethodBreakdown.map((pm) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(color: cs.secondary, shape: BoxShape.circle),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                pm.method.toUpperCase(),
-                                style: getBoldStyle(fontSize: 12, color: cs.onSurface),
-                              ),
-                              Text(
-                                ' (x${pm.count} users)',
-                                style: getRegularStyle(fontSize: 11, color: cs.onSurface.withValues(alpha: .45)),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            'Actual: ${fmt.format(pm.actualAmount)}',
-                            style: getBoldStyle(fontSize: 12, color: cs.primary),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 14),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            ...stats.paymentMethodBreakdown.map(
+              (pm) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
                           children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: cs.secondary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
                             Text(
-                              pm.outstandingCount > 0
-                                  ? '${pm.outstandingCount} outstanding'
-                                  : 'Fully paid',
-                              style: getRegularStyle(
-                                fontSize: 11,
-                                color: pm.outstandingCount > 0
-                                    ? cs.error.withValues(alpha: .8)
-                                    : cs.secondary,
+                              pm.method.toUpperCase(),
+                              style: getBoldStyle(
+                                fontSize: 12,
+                                color: cs.onSurface,
                               ),
                             ),
                             Text(
-                              'Expected: ${fmt.format(pm.totalAmount)}',
+                              ' (x${pm.count} users)',
                               style: getRegularStyle(
                                 fontSize: 11,
-                                color: cs.onSurface.withValues(alpha: .5),
+                                color: cs.onSurface.withValues(alpha: .45),
                               ),
                             ),
                           ],
                         ),
+                        Text(
+                          'Actual: ${fmt.format(pm.actualAmount)}',
+                          style: getBoldStyle(fontSize: 12, color: cs.primary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 14),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            pm.outstandingCount > 0
+                                ? '${pm.outstandingCount} outstanding'
+                                : 'Fully paid',
+                            style: getRegularStyle(
+                              fontSize: 11,
+                              color: pm.outstandingCount > 0
+                                  ? cs.error.withValues(alpha: .8)
+                                  : cs.secondary,
+                            ),
+                          ),
+                          Text(
+                            'Expected: ${fmt.format(pm.totalAmount)}',
+                            style: getRegularStyle(
+                              fontSize: 11,
+                              color: cs.onSurface.withValues(alpha: .5),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                )),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -674,25 +1079,38 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
             Container(
               width: 5,
               height: 5,
-              decoration: BoxDecoration(color: cs.onSurface.withValues(alpha: .3), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: cs.onSurface.withValues(alpha: .3),
+                shape: BoxShape.circle,
+              ),
             ),
             const SizedBox(width: 8),
             Text(
               label,
-              style: getRegularStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: .6)),
+              style: getRegularStyle(
+                fontSize: 12,
+                color: cs.onSurface.withValues(alpha: .6),
+              ),
             ),
           ],
         ),
         Text(
           value,
-          style: getMediumStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: .8)),
+          style: getMediumStyle(
+            fontSize: 12,
+            color: cs.onSurface.withValues(alpha: .8),
+          ),
         ),
       ],
     );
   }
 
   // ── Partner split shares tracking panel ──
-  Widget _buildPartnerSplitSection(FinanceStats stats, ColorScheme cs, bool isDark) {
+  Widget _buildPartnerSplitSection(
+    FinanceStats stats,
+    ColorScheme cs,
+    bool isDark,
+  ) {
     final fmt = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
 
     Widget splitBar(
@@ -782,7 +1200,9 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
                 'Unpaid: ${fmt.format((expected - paid).clamp(0, double.infinity))}',
                 style: getMediumStyle(
                   fontSize: 10,
-                  color: (expected - paid) > 0 ? cs.error.withValues(alpha: .8) : cs.secondary,
+                  color: (expected - paid) > 0
+                      ? cs.error.withValues(alpha: .8)
+                      : cs.secondary,
                 ),
               ),
             ],
@@ -796,11 +1216,11 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? cs.onSurface.withValues(alpha: .03) : cs.primaryContainer.withValues(alpha: .3),
+        color: isDark
+            ? cs.onSurface.withValues(alpha: .03)
+            : cs.primaryContainer.withValues(alpha: .3),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: cs.primary.withValues(alpha: .06),
-        ),
+        border: Border.all(color: cs.primary.withValues(alpha: .06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -816,9 +1236,27 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
             ],
           ),
           const SizedBox(height: 20),
-          splitBar('Shakil', stats.shakilShare, stats.totalPaidShakil, 30.0, cs.primary),
-          splitBar('Nayeem', stats.nayeemShare, stats.totalPaidNayeem, 30.0, cs.secondary),
-          splitBar('Rashed', stats.rashedShare, stats.totalPaidRashed, 40.0, Colors.teal),
+          splitBar(
+            'Shakil',
+            stats.shakilShare,
+            stats.totalPaidShakil,
+            30.0,
+            cs.primary,
+          ),
+          splitBar(
+            'Nayeem',
+            stats.nayeemShare,
+            stats.totalPaidNayeem,
+            30.0,
+            cs.secondary,
+          ),
+          splitBar(
+            'Rashed',
+            stats.rashedShare,
+            stats.totalPaidRashed,
+            40.0,
+            Colors.teal,
+          ),
         ],
       ),
     );
@@ -830,11 +1268,11 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
       width: double.infinity,
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: isDark ? cs.onSurface.withValues(alpha: .02) : cs.primaryContainer.withValues(alpha: .1),
+        color: isDark
+            ? cs.onSurface.withValues(alpha: .02)
+            : cs.primaryContainer.withValues(alpha: .1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: cs.onSurface.withValues(alpha: .04),
-        ),
+        border: Border.all(color: cs.onSurface.withValues(alpha: .04)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -859,22 +1297,13 @@ class _FinanceScreenBodyState extends State<_FinanceScreenBody> {
           const SizedBox(height: 4),
           Text(
             'Log new payouts for Shakil, Nayeem, and Rashed.',
-            style: getRegularStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: .4)),
+            style: getRegularStyle(
+              fontSize: 12,
+              color: cs.onSurface.withValues(alpha: .4),
+            ),
             textAlign: TextAlign.center,
           ),
         ],
-      ),
-    );
-  }
-
-  // ── Show dialog modal to log payouts ──
-  void _showLogPayoutDialog(BuildContext context) {
-    final bloc = context.read<FinanceBloc>();
-    showDialog(
-      context: context,
-      builder: (_) => BlocProvider.value(
-        value: bloc,
-        child: _LogPayoutDialog(cycle: _selectedCycle),
       ),
     );
   }
@@ -904,11 +1333,11 @@ class _PayoutCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: isDark ? cs.onSurface.withValues(alpha: .04) : cs.primaryContainer,
+        color: isDark
+            ? cs.onSurface.withValues(alpha: .04)
+            : cs.primaryContainer,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: cs.onSurface.withValues(alpha: .05),
-        ),
+        border: Border.all(color: cs.onSurface.withValues(alpha: .05)),
       ),
       child: ExpansionTile(
         shape: const Border(),
@@ -926,10 +1355,15 @@ class _PayoutCard extends StatelessWidget {
           style: getBoldStyle(fontSize: 15, color: cs.onSurface),
         ),
         subtitle: Text(
-          payout.notes?.isNotEmpty == true ? payout.notes! : 'Partner Distribution',
+          payout.notes?.isNotEmpty == true
+              ? payout.notes!
+              : 'Partner Distribution',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: getRegularStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: .5)),
+          style: getRegularStyle(
+            fontSize: 12,
+            color: cs.onSurface.withValues(alpha: .5),
+          ),
         ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -942,7 +1376,10 @@ class _PayoutCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               'by ${payout.creatorUsername ?? 'admin'}',
-              style: getRegularStyle(fontSize: 10, color: cs.onSurface.withValues(alpha: .35)),
+              style: getRegularStyle(
+                fontSize: 10,
+                color: cs.onSurface.withValues(alpha: .35),
+              ),
             ),
           ],
         ),
@@ -959,7 +1396,10 @@ class _PayoutCard extends StatelessWidget {
                   children: [
                     Text(
                       'Recorded Date:',
-                      style: getRegularStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: .45)),
+                      style: getRegularStyle(
+                        fontSize: 12,
+                        color: cs.onSurface.withValues(alpha: .45),
+                      ),
                     ),
                     Text(
                       dateStr,
@@ -980,7 +1420,7 @@ class _PayoutCard extends StatelessWidget {
                 _buildSplitRow('Rashed', payout.rashedAmount, Colors.teal),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -996,10 +1436,7 @@ class _PayoutCard extends StatelessWidget {
           decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
         ),
         const SizedBox(width: 8),
-        Text(
-          name,
-          style: getMediumStyle(fontSize: 13, color: cs.onSurface),
-        ),
+        Text(name, style: getMediumStyle(fontSize: 13, color: cs.onSurface)),
         const Spacer(),
         Text(
           fmt.format(amount),
@@ -1015,7 +1452,8 @@ class _PayoutCard extends StatelessWidget {
 // ══════════════════════════════════════════════════════════
 class _LogPayoutDialog extends StatefulWidget {
   final String cycle;
-  const _LogPayoutDialog({required this.cycle});
+  final String namespace;
+  const _LogPayoutDialog({required this.cycle, required this.namespace});
 
   @override
   State<_LogPayoutDialog> createState() => _LogPayoutDialogState();
@@ -1043,7 +1481,9 @@ class _LogPayoutDialogState extends State<_LogPayoutDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return BlocConsumer<FinanceBloc, FinanceState>(
-      listenWhen: (prev, curr) => prev.status == FinanceStatus.logging && curr.status != FinanceStatus.logging,
+      listenWhen: (prev, curr) =>
+          prev.status == FinanceStatus.logging &&
+          curr.status != FinanceStatus.logging,
       listener: (context, state) {
         if (state.status == FinanceStatus.success) {
           Navigator.pop(context); // Close dialog on success
@@ -1084,7 +1524,7 @@ class _LogPayoutDialogState extends State<_LogPayoutDialog> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Log splits for Cycle: ${widget.cycle}',
+                      'Log splits for Cycle: ${widget.cycle} (${widget.namespace == 'all' ? 'All Apps' : widget.namespace})',
                       style: getMediumStyle(fontSize: 12, color: cs.primary),
                     ),
                     const SizedBox(height: 16),
@@ -1127,7 +1567,9 @@ class _LogPayoutDialogState extends State<_LogPayoutDialog> {
                     const SizedBox(height: 6),
                     Container(
                       decoration: BoxDecoration(
-                        color: isDark ? cs.onSurface.withValues(alpha: .04) : cs.primaryContainer,
+                        color: isDark
+                            ? cs.onSurface.withValues(alpha: .04)
+                            : cs.primaryContainer,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: cs.onSurface.withValues(alpha: .05),
@@ -1136,10 +1578,16 @@ class _LogPayoutDialogState extends State<_LogPayoutDialog> {
                       child: TextFormField(
                         controller: _notesCtrl,
                         maxLines: 2,
-                        style: getMediumStyle(fontSize: 13, color: cs.onSurface),
+                        style: getMediumStyle(
+                          fontSize: 13,
+                          color: cs.onSurface,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'e.g. Weekly payout distribution',
-                          hintStyle: getRegularStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: .35)),
+                          hintStyle: getRegularStyle(
+                            fontSize: 12,
+                            color: cs.onSurface.withValues(alpha: .35),
+                          ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.all(12),
                         ),
@@ -1155,10 +1603,14 @@ class _LogPayoutDialogState extends State<_LogPayoutDialog> {
               onPressed: isLogging ? null : () => Navigator.pop(context),
               child: Text(
                 'Cancel',
-                style: getBoldStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: .5)),
+                style: getBoldStyle(
+                  fontSize: 14,
+                  color: cs.onSurface.withValues(alpha: .5),
+                ),
               ),
             ),
             ElevatedButton(
+              key: const ValueKey('submit_payout_button'),
               onPressed: isLogging
                   ? null
                   : () {
@@ -1168,14 +1620,17 @@ class _LogPayoutDialogState extends State<_LogPayoutDialog> {
                         final rashed = double.tryParse(_rashedCtrl.text) ?? 0.0;
 
                         context.read<FinanceBloc>().add(
-                              LogPayout(
-                                shakilAmount: shakil,
-                                nayeemAmount: nayeem,
-                                rashedAmount: rashed,
-                                cycle: widget.cycle,
-                                notes: _notesCtrl.text.trim(),
-                              ),
-                            );
+                          LogPayout(
+                            shakilAmount: shakil,
+                            nayeemAmount: nayeem,
+                            rashedAmount: rashed,
+                            cycle: widget.cycle,
+                            namespace: widget.namespace != 'all'
+                                ? widget.namespace
+                                : null,
+                            notes: _notesCtrl.text.trim(),
+                          ),
+                        );
                       }
                     },
               style: ElevatedButton.styleFrom(
@@ -1215,18 +1670,15 @@ class _LogPayoutDialogState extends State<_LogPayoutDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: getBoldStyle(fontSize: 12, color: cs.onSurface),
-        ),
+        Text(label, style: getBoldStyle(fontSize: 12, color: cs.onSurface)),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
-            color: isDark ? cs.onSurface.withValues(alpha: .04) : cs.primaryContainer,
+            color: isDark
+                ? cs.onSurface.withValues(alpha: .04)
+                : cs.primaryContainer,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: cs.onSurface.withValues(alpha: .05),
-            ),
+            border: Border.all(color: cs.onSurface.withValues(alpha: .05)),
           ),
           child: TextFormField(
             controller: controller,
@@ -1243,13 +1695,220 @@ class _LogPayoutDialogState extends State<_LogPayoutDialog> {
             },
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: getRegularStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: .35)),
+              hintStyle: getRegularStyle(
+                fontSize: 12,
+                color: cs.onSurface.withValues(alpha: .35),
+              ),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  SUBSCRIBER CARD WIDGET
+// ══════════════════════════════════════════════════════════
+class _SubscriberCard extends StatelessWidget {
+  final SessionSubscriber sub;
+  final ColorScheme cs;
+  final bool isDark;
+
+  const _SubscriberCard({
+    required this.sub,
+    required this.cs,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isAutolike = sub.autolike == 1;
+
+    String? formattedCreatedAt;
+    if (sub.createdAt != null && sub.createdAt!.isNotEmpty) {
+      final parsed = DateTime.tryParse(sub.createdAt!);
+      if (parsed != null) {
+        formattedCreatedAt = DateFormat('dd MMM yyyy, hh:mm a').format(parsed);
+      } else {
+        formattedCreatedAt = sub.createdAt;
+      }
+    }
+
+    String? formattedStartedAt;
+    if (sub.subscriptionStartedAt != null &&
+        sub.subscriptionStartedAt!.isNotEmpty) {
+      final parsed = DateTime.tryParse(sub.subscriptionStartedAt!);
+      if (parsed != null) {
+        formattedStartedAt = DateFormat('dd MMM yyyy, hh:mm a').format(parsed);
+      } else {
+        formattedStartedAt = sub.subscriptionStartedAt;
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? cs.onSurface.withValues(alpha: .03) : cs.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.onSurface.withValues(alpha: .05)),
+      ),
+      child: Row(
+        children: [
+          // Avatar
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  cs.primary.withValues(alpha: .75),
+                  cs.secondary.withValues(alpha: .75),
+                ],
+              ),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              sub.username.isNotEmpty ? sub.username[0].toUpperCase() : '?',
+              style: getBoldStyle(fontSize: 16, color: Colors.white),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Username and email / toggler
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        sub.username,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: getBoldStyle(fontSize: 14, color: cs.onSurface),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Namespace badge
+                    if (sub.namespace != null && sub.namespace!.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cs.secondary.withValues(alpha: .1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          sub.namespace!,
+                          style: getBoldStyle(fontSize: 9, color: cs.secondary),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                if (sub.email != null && sub.email!.isNotEmpty)
+                  Text(
+                    sub.email!,
+                    style: getRegularStyle(
+                      fontSize: 11,
+                      color: cs.onSurface.withValues(alpha: .45),
+                    ),
+                  ),
+                if (sub.toggler != null && sub.toggler!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Toggled by: ${sub.toggler}',
+                    style: getMediumStyle(
+                      fontSize: 10,
+                      color: cs.primary.withValues(alpha: .7),
+                    ),
+                  ),
+                ],
+
+                if (formattedStartedAt != null) ...[
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.play_circle_outline_rounded,
+                        size: 11,
+                        color: cs.onSurface.withValues(alpha: .4),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Started: $formattedStartedAt',
+                        style: getRegularStyle(
+                          fontSize: 10,
+                          color: cs.onSurface.withValues(alpha: .5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Autolike & Payment Method details
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Autolike status
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isAutolike
+                      ? Colors.green.withValues(alpha: .1)
+                      : Colors.grey.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: isAutolike ? Colors.green : Colors.grey,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      isAutolike ? 'Autolike' : 'No Autolike',
+                      style: getBoldStyle(
+                        fontSize: 10,
+                        color: isAutolike ? Colors.green : Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Payment Method
+              if (sub.paymentMethod != null && sub.paymentMethod!.isNotEmpty)
+                Text(
+                  sub.paymentMethod!.toUpperCase(),
+                  style: getBoldStyle(
+                    fontSize: 10,
+                    color: cs.onSurface.withValues(alpha: .5),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
