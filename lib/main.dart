@@ -4,8 +4,10 @@ import 'package:adnetwork/core/services/link_queue_manager.dart';
 import 'package:adnetwork/layers/data/repo/remote/auth_repository.dart';
 import 'package:adnetwork/layers/data/repo/remote/link_repository.dart';
 import 'package:adnetwork/layers/data/repo/remote/user_repository.dart';
+import 'package:adnetwork/layers/data/repo/remote/campaign_repository.dart';
 import 'package:adnetwork/layers/presentation/controller/profile/profile_bloc.dart';
 import 'package:adnetwork/layers/presentation/controller/theme/theme_cubit.dart';
+import 'package:adnetwork/layers/presentation/controller/campaign/campaign_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -24,6 +26,7 @@ class MyApp extends StatelessWidget {
         RepositoryProvider(create: (_) => AuthRepository()),
         RepositoryProvider(create: (_) => UserRepository()),
         RepositoryProvider(create: (_) => LinkRepository()),
+        RepositoryProvider(create: (_) => CampaignRepository()),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -31,6 +34,11 @@ class MyApp extends StatelessWidget {
             create: (ctx) => ProfileBloc(
               userRepository: ctx.read<UserRepository>(),
             )..add(const LoadProfile()),
+          ),
+          BlocProvider(
+            create: (ctx) => CampaignBloc(
+              campaignRepository: ctx.read<CampaignRepository>(),
+            ),
           ),
           BlocProvider(create: (_) => ThemeCubit()),
         ],

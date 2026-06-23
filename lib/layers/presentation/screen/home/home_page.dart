@@ -245,6 +245,15 @@ class _HomePageState extends State<HomePage> {
                                 Navigator.pushNamed(context, '/settings');
                               },
                             ),
+                            _Item(
+                              icon: Icons.track_changes_rounded,
+                              label: 'Campaign',
+                              active: false,
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.pushNamed(context, '/campaign');
+                              },
+                            ),
                             // Admin panel — visible for admin and moderator users
                             if (user?.role == 'admin' ||
                                 user?.role == 'moderator') ...[

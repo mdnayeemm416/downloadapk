@@ -50,6 +50,7 @@ dependencies:
   path_provider: ^2.1.5
   open_filex: ^4.7.0
   pip: ^0.0.3
+  flutter_custom_tabs: ^2.5.0
 
 dev_dependencies:
   flutter_test:

@@ -16,6 +16,7 @@ import 'package:adnetwork/layers/presentation/screen/signup/signup_screen.dart';
 import 'package:adnetwork/layers/presentation/screen/social/social_screens.dart';
 import 'package:adnetwork/layers/presentation/screen/splash/splash_screen.dart';
 import 'package:adnetwork/layers/presentation/screen/stats/stats_screen.dart';
+import 'package:adnetwork/layers/presentation/screen/campaign/campaign_screen.dart';
 import 'package:flutter/material.dart';
 
 class Routes {
@@ -38,6 +39,7 @@ class Routes {
   static const String adminNotices = '/admin/notices';
   static const String adminSubscriptions = '/admin/subscriptions';
   static const String adminFinance = '/admin/finance';
+  static const String campaign = '/campaign';
 }
 
 class AppRoutes {
@@ -84,6 +86,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const AdminSubscriptionsScreen());
       case Routes.adminFinance:
         return MaterialPageRoute(builder: (_) => const FinanceScreen());
+      case Routes.campaign:
+        return MaterialPageRoute(builder: (_) => const CampaignScreen());
       default:
         return _unDefinedRoute();
     }
