@@ -61,7 +61,9 @@ class _CampaignScreenState extends State<CampaignScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       if (_isWatching && _activeAdStartTime != null) {
-        final elapsed = DateTime.now().difference(_activeAdStartTime!).inSeconds;
+        final elapsed = DateTime.now()
+            .difference(_activeAdStartTime!)
+            .inSeconds;
         if (elapsed < _activeAdDuration) {
           // Closed early!
           _adTimer?.cancel();
@@ -82,7 +84,8 @@ class _CampaignScreenState extends State<CampaignScreen>
 
   Future<void> _launchAd(CampaignLinkModel campaign) async {
     final random = Random();
-    final adDuration = 8 + random.nextInt(8); // random number between 8 and 15 inclusive
+    final adDuration =
+        10 + random.nextInt(6); // random number between 10 and 15 inclusive
 
     setState(() {
       _activeAdId = campaign.id;
@@ -113,7 +116,8 @@ class _CampaignScreenState extends State<CampaignScreen>
           preferredBarTintColor: theme.colorScheme.surface,
           preferredControlTintColor: theme.colorScheme.primary,
           barCollapsingEnabled: true,
-          dismissButtonStyle: custom_tabs.SafariViewControllerDismissButtonStyle.close,
+          dismissButtonStyle:
+              custom_tabs.SafariViewControllerDismissButtonStyle.close,
         ),
       );
     } catch (e) {
@@ -172,7 +176,11 @@ class _CampaignScreenState extends State<CampaignScreen>
                   color: cs.error.withValues(alpha: .1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.warning_amber_rounded, color: cs.error, size: 24),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  color: cs.error,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -238,7 +246,11 @@ class _CampaignScreenState extends State<CampaignScreen>
                   color: cs.error.withValues(alpha: .1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.warning_amber_rounded, color: cs.error, size: 24),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  color: cs.error,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -321,7 +333,9 @@ class _CampaignScreenState extends State<CampaignScreen>
       canPop: canPop,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        final shouldExit = await _showExitConfirmationDialog(unlikedLinks.length);
+        final shouldExit = await _showExitConfirmationDialog(
+          unlikedLinks.length,
+        );
         if (shouldExit && context.mounted) {
           Navigator.of(context).pop(result);
         }
@@ -357,97 +371,101 @@ class _CampaignScreenState extends State<CampaignScreen>
                 if (canPop) {
                   Navigator.pop(context);
                 } else {
-                  final shouldExit = await _showExitConfirmationDialog(unlikedLinks.length);
+                  final shouldExit = await _showExitConfirmationDialog(
+                    unlikedLinks.length,
+                  );
                   if (shouldExit && context.mounted) {
                     Navigator.pop(context);
                   }
                 }
               },
             ),
-          title: Text(
-            'Campaigns',
-            style: getBoldStyle(fontSize: 20, color: cs.onSurface),
-          ),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(66),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: isDark ? cs.onSurface.withValues(alpha: .04) : cs.primary.withValues(alpha: .04),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: cs.primary.withValues(alpha: isDark ? .1 : .05),
-                  width: 1,
+            title: Text(
+              'Campaigns',
+              style: getBoldStyle(fontSize: 20, color: cs.onSurface),
+            ),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(66),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? cs.onSurface.withValues(alpha: .04)
+                      : cs.primary.withValues(alpha: .04),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: cs.primary.withValues(alpha: isDark ? .1 : .05),
+                    width: 1,
+                  ),
                 ),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                indicator: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: cs.primary,
-                  boxShadow: [
-                    BoxShadow(
-                      color: cs.primary.withValues(alpha: isDark ? .25 : .15),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
+                child: TabBar(
+                  controller: _tabController,
+                  indicator: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: cs.primary,
+                    boxShadow: [
+                      BoxShadow(
+                        color: cs.primary.withValues(alpha: isDark ? .25 : .15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  labelColor: cs.onPrimary,
+                  unselectedLabelColor: cs.onSurface.withValues(alpha: .6),
+                  labelStyle: getBoldStyle(fontSize: 13),
+                  unselectedLabelStyle: getMediumStyle(fontSize: 13),
+                  dividerColor: Colors.transparent,
+                  tabs: const [
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.campaign_rounded, size: 16),
+                          SizedBox(width: 6),
+                          Text('Campaign Feed'),
+                        ],
+                      ),
+                    ),
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_link_rounded, size: 16),
+                          SizedBox(width: 6),
+                          Text('My Campaigns'),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                labelColor: cs.onPrimary,
-                unselectedLabelColor: cs.onSurface.withValues(alpha: .6),
-                labelStyle: getBoldStyle(fontSize: 13),
-                unselectedLabelStyle: getMediumStyle(fontSize: 13),
-                dividerColor: Colors.transparent,
-                tabs: const [
-                  Tab(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.campaign_rounded, size: 16),
-                        SizedBox(width: 6),
-                        Text('Campaign Feed'),
-                      ],
-                    ),
-                  ),
-                  Tab(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add_link_rounded, size: 16),
-                        SizedBox(width: 6),
-                        Text('My Campaigns'),
-                      ],
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
-        ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _CampaignFeedTab(
-              isDark: isDark,
-              campaignStarted: _campaignStarted,
-              onStartCampaign: () {
-                setState(() {
-                  _campaignStarted = true;
-                });
-              },
-              onLaunchAd: _launchAd,
-              activeAdId: _activeAdId,
-              activeAdDuration: _activeAdDuration,
-            ),
-            _MyCampaignsTab(isDark: isDark),
-          ],
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              _CampaignFeedTab(
+                isDark: isDark,
+                campaignStarted: _campaignStarted,
+                onStartCampaign: () {
+                  setState(() {
+                    _campaignStarted = true;
+                  });
+                },
+                onLaunchAd: _launchAd,
+                activeAdId: _activeAdId,
+                activeAdDuration: _activeAdDuration,
+              ),
+              _MyCampaignsTab(isDark: isDark),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -490,7 +508,9 @@ class _CampaignFeedTab extends StatelessWidget {
           if (state.feedStatus == CampaignStatus.error) {
             final errorMsg = state.feedErrorMessage.toLowerCase();
             final isLimitReached = errorMsg.contains('limit reached');
-            final isUnderfilled = errorMsg.contains('not available') || errorMsg.contains('underfilled');
+            final isUnderfilled =
+                errorMsg.contains('not available') ||
+                errorMsg.contains('underfilled');
 
             return Center(
               child: SingleChildScrollView(
@@ -498,7 +518,10 @@ class _CampaignFeedTab extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 32,
+                    ),
                     decoration: BoxDecoration(
                       color: isDark
                           ? cs.onSurface.withValues(alpha: .04)
@@ -525,8 +548,8 @@ class _CampaignFeedTab extends StatelessWidget {
                             isLimitReached
                                 ? Icons.timer_rounded
                                 : (isUnderfilled
-                                    ? Icons.campaign_rounded
-                                    : Icons.error_outline_rounded),
+                                      ? Icons.campaign_rounded
+                                      : Icons.error_outline_rounded),
                             size: 48,
                             color: isLimitReached ? cs.primary : cs.error,
                           ),
@@ -535,8 +558,13 @@ class _CampaignFeedTab extends StatelessWidget {
                         Text(
                           isLimitReached
                               ? 'Limit Reached'
-                              : (isUnderfilled ? 'No Campaigns Available' : 'Error Occurred'),
-                          style: getBoldStyle(fontSize: 18, color: cs.onSurface),
+                              : (isUnderfilled
+                                    ? 'No Campaigns Available'
+                                    : 'Error Occurred'),
+                          style: getBoldStyle(
+                            fontSize: 18,
+                            color: cs.onSurface,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 10),
@@ -555,7 +583,9 @@ class _CampaignFeedTab extends StatelessWidget {
                             buttonName: 'Retry Feed',
                             icon: Icons.refresh_rounded,
                             onPressed: () {
-                              context.read<CampaignBloc>().add(const LoadCampaignFeed());
+                              context.read<CampaignBloc>().add(
+                                const LoadCampaignFeed(),
+                              );
                             },
                           ),
                         ),
@@ -567,7 +597,9 @@ class _CampaignFeedTab extends StatelessWidget {
             );
           }
 
-          final unlikedLinks = state.feedLinks.where((l) => !l.isLiked).toList();
+          final unlikedLinks = state.feedLinks
+              .where((l) => !l.isLiked)
+              .toList();
 
           if (state.feedLinks.isEmpty) {
             return Center(
@@ -591,12 +623,18 @@ class _CampaignFeedTab extends StatelessWidget {
                     const SizedBox(height: 20),
                     Text(
                       'No Campaigns Available',
-                      style: getSemiBoldStyle(fontSize: 18, color: cs.onSurface.withValues(alpha: .6)),
+                      style: getSemiBoldStyle(
+                        fontSize: 18,
+                        color: cs.onSurface.withValues(alpha: .6),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Pull down to refresh and try again',
-                      style: getRegularStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: .35)),
+                      style: getRegularStyle(
+                        fontSize: 13,
+                        color: cs.onSurface.withValues(alpha: .35),
+                      ),
                     ),
                   ],
                 ),
@@ -612,7 +650,10 @@ class _CampaignFeedTab extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 36,
+                    ),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: isDark
@@ -636,7 +677,9 @@ class _CampaignFeedTab extends StatelessWidget {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: cs.primary.withValues(alpha: isDark ? .15 : .05),
+                          color: cs.primary.withValues(
+                            alpha: isDark ? .15 : .05,
+                          ),
                           blurRadius: 30,
                           offset: const Offset(0, 15),
                         ),
@@ -647,7 +690,10 @@ class _CampaignFeedTab extends StatelessWidget {
                       children: [
                         // Tag Badge
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [cs.primary, cs.secondary],
@@ -663,7 +709,10 @@ class _CampaignFeedTab extends StatelessWidget {
                           ),
                           child: Text(
                             'HIGH-YIELD OPTION',
-                            style: getBoldStyle(fontSize: 10, color: cs.onPrimary),
+                            style: getBoldStyle(
+                              fontSize: 10,
+                              color: cs.onPrimary,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 28),
@@ -684,7 +733,10 @@ class _CampaignFeedTab extends StatelessWidget {
                               height: 80,
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [cs.primary, Color.lerp(cs.primary, cs.secondary, 0.5)!],
+                                  colors: [
+                                    cs.primary,
+                                    Color.lerp(cs.primary, cs.secondary, 0.5)!,
+                                  ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
@@ -708,7 +760,10 @@ class _CampaignFeedTab extends StatelessWidget {
                         const SizedBox(height: 28),
                         Text(
                           'Start Campaign',
-                          style: getBoldStyle(fontSize: 24, color: cs.onSurface),
+                          style: getBoldStyle(
+                            fontSize: 24,
+                            color: cs.onSurface,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 10),
@@ -793,12 +848,18 @@ class _CampaignFeedTab extends StatelessWidget {
                     const SizedBox(height: 20),
                     Text(
                       'All Campaigns Completed!',
-                      style: getSemiBoldStyle(fontSize: 18, color: cs.onSurface.withValues(alpha: .6)),
+                      style: getSemiBoldStyle(
+                        fontSize: 18,
+                        color: cs.onSurface.withValues(alpha: .6),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'You have viewed all available sponsor ads.',
-                      style: getRegularStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: .35)),
+                      style: getRegularStyle(
+                        fontSize: 13,
+                        color: cs.onSurface.withValues(alpha: .35),
+                      ),
                     ),
                   ],
                 ),
@@ -813,7 +874,9 @@ class _CampaignFeedTab extends StatelessWidget {
             itemCount: unlikedLinks.length,
             itemBuilder: (context, index) {
               final campaign = unlikedLinks[index];
-              final originalIndex = state.feedLinks.indexWhere((l) => l.id == campaign.id);
+              final originalIndex = state.feedLinks.indexWhere(
+                (l) => l.id == campaign.id,
+              );
               return _CampaignFeedCard(
                 campaign: campaign,
                 index: originalIndex != -1 ? originalIndex : index,
@@ -855,7 +918,9 @@ class _CampaignFeedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = context.colorScheme;
 
-    final Color cardBg = isDark ? cs.onSurface.withValues(alpha: .04) : cs.primaryContainer;
+    final Color cardBg = isDark
+        ? cs.onSurface.withValues(alpha: .04)
+        : cs.primaryContainer;
     final Color borderColor = cs.primary.withValues(alpha: isDark ? .12 : .06);
 
     return Container(
@@ -887,17 +952,16 @@ class _CampaignFeedCard extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [cs.primary.withValues(alpha: .15), cs.secondary.withValues(alpha: .1)],
+                    colors: [
+                      cs.primary.withValues(alpha: .15),
+                      cs.secondary.withValues(alpha: .1),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: Icon(
-                  Icons.star_rounded,
-                  size: 24,
-                  color: cs.secondary,
-                ),
+                child: Icon(Icons.star_rounded, size: 24, color: cs.secondary),
               ),
               const SizedBox(width: 16),
               // Ad info
@@ -907,20 +971,14 @@ class _CampaignFeedCard extends StatelessWidget {
                   children: [
                     Text(
                       'Sponsor Ad Task #${index + 1}',
-                      style: getBoldStyle(
-                        fontSize: 16,
-                        color: cs.onSurface,
-                      ),
+                      style: getBoldStyle(fontSize: 16, color: cs.onSurface),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'High CPM Yield Campaign',
-                      style: getBoldStyle(
-                        fontSize: 10,
-                        color: cs.primary,
-                      ),
+                      style: getBoldStyle(fontSize: 10, color: cs.primary),
                     ),
                   ],
                 ),
@@ -955,12 +1013,16 @@ class _CampaignFeedCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    isActiveWatch ? Icons.hourglass_top_rounded : Icons.rocket_launch_rounded,
+                    isActiveWatch
+                        ? Icons.hourglass_top_rounded
+                        : Icons.rocket_launch_rounded,
                     size: 18,
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    isActiveWatch ? 'Watching (${activeAdDuration}s)...' : 'Launch Campaign Ad',
+                    isActiveWatch
+                        ? 'Watching (${activeAdDuration}s)...'
+                        : 'Launch Campaign Ad',
                     style: getBoldStyle(fontSize: 13, color: cs.onPrimary),
                   ),
                 ],
@@ -994,14 +1056,9 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
-        color: isDark
-            ? cs.onSurface.withValues(alpha: .03)
-            : cs.surface,
+        color: isDark ? cs.onSurface.withValues(alpha: .03) : cs.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withValues(alpha: .15),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: .15), width: 1),
         boxShadow: [
           if (!isDark)
             BoxShadow(
@@ -1099,17 +1156,26 @@ class _MyCampaignsTab extends StatelessWidget {
                               children: [
                                 Text(
                                   'Campaign Upload Quota',
-                                  style: getSemiBoldStyle(fontSize: 14, color: cs.onSurface),
+                                  style: getSemiBoldStyle(
+                                    fontSize: 14,
+                                    color: cs.onSurface,
+                                  ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: cs.primary.withValues(alpha: .1),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
                                     '$linksCount / $maxLinks Links',
-                                    style: getBoldStyle(fontSize: 12, color: cs.primary),
+                                    style: getBoldStyle(
+                                      fontSize: 12,
+                                      color: cs.primary,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1118,15 +1184,22 @@ class _MyCampaignsTab extends StatelessWidget {
                             ClipRRect(
                               borderRadius: BorderRadius.circular(4),
                               child: LinearProgressIndicator(
-                                value: maxLinks > 0 ? (linksCount / maxLinks).clamp(0.0, 1.0) : 0,
+                                value: maxLinks > 0
+                                    ? (linksCount / maxLinks).clamp(0.0, 1.0)
+                                    : 0,
                                 minHeight: 8,
-                                backgroundColor: cs.primary.withValues(alpha: .1),
-                                valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+                                backgroundColor: cs.primary.withValues(
+                                  alpha: .1,
+                                ),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  cs.primary,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              user?.role == 'admin' || user?.role == 'superadmin'
+                              user?.role == 'admin' ||
+                                      user?.role == 'superadmin'
                                   ? 'Admins/Superadmins can upload up to 10 active campaign links.'
                                   : 'Regular Users/Moderators can upload up to 3 active campaign links.',
                               style: getRegularStyle(
@@ -1141,7 +1214,8 @@ class _MyCampaignsTab extends StatelessWidget {
                   ),
 
                   // Links List
-                  if (state.myLinksStatus == CampaignStatus.loading && state.myLinks.isEmpty)
+                  if (state.myLinksStatus == CampaignStatus.loading &&
+                      state.myLinks.isEmpty)
                     const SliverFillRemaining(
                       child: Center(child: CircularProgressIndicator()),
                     )
@@ -1166,12 +1240,18 @@ class _MyCampaignsTab extends StatelessWidget {
                             const SizedBox(height: 20),
                             Text(
                               'No campaigns uploaded',
-                              style: getSemiBoldStyle(fontSize: 18, color: cs.onSurface.withValues(alpha: .6)),
+                              style: getSemiBoldStyle(
+                                fontSize: 18,
+                                color: cs.onSurface.withValues(alpha: .6),
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'Tap + below to add your campaign link',
-                              style: getRegularStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: .35)),
+                              style: getRegularStyle(
+                                fontSize: 13,
+                                color: cs.onSurface.withValues(alpha: .35),
+                              ),
                             ),
                           ],
                         ),
@@ -1179,15 +1259,18 @@ class _MyCampaignsTab extends StatelessWidget {
                     )
                   else
                     SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final campaign = state.myLinks[index];
-                            return _MyCampaignCard(campaign: campaign, isDark: isDark);
-                          },
-                          childCount: state.myLinks.length,
-                        ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final campaign = state.myLinks[index];
+                          return _MyCampaignCard(
+                            campaign: campaign,
+                            isDark: isDark,
+                          );
+                        }, childCount: state.myLinks.length),
                       ),
                     ),
                   const SliverToBoxAdapter(child: SizedBox(height: 90)),
@@ -1220,7 +1303,8 @@ class _MyCampaignsTab extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
-                        onTap: () => _showAddCampaignDialog(context, state.myLinks),
+                        onTap: () =>
+                            _showAddCampaignDialog(context, state.myLinks),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 20,
@@ -1256,7 +1340,10 @@ class _MyCampaignsTab extends StatelessWidget {
     );
   }
 
-  void _showAddCampaignDialog(BuildContext context, List<CampaignLinkModel> currentLinks) {
+  void _showAddCampaignDialog(
+    BuildContext context,
+    List<CampaignLinkModel> currentLinks,
+  ) {
     final urlCtrl = TextEditingController();
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
@@ -1344,7 +1431,8 @@ class _MyCampaignsTab extends StatelessWidget {
                     return;
                   }
 
-                  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                  if (!url.startsWith('http://') &&
+                      !url.startsWith('https://')) {
                     showToast(
                       context: context,
                       message: 'URL must start with http:// or https://',
@@ -1354,11 +1442,13 @@ class _MyCampaignsTab extends StatelessWidget {
                   }
 
                   // Submit
-                  context.read<CampaignBloc>().add(AddCampaignLink(
-                        url: url,
-                        title: title.isEmpty ? null : title,
-                        description: desc.isEmpty ? null : desc,
-                      ));
+                  context.read<CampaignBloc>().add(
+                    AddCampaignLink(
+                      url: url,
+                      title: title.isEmpty ? null : title,
+                      description: desc.isEmpty ? null : desc,
+                    ),
+                  );
 
                   Navigator.pop(ctx);
                 },
@@ -1492,26 +1582,36 @@ class _MyCampaignCard extends StatelessWidget {
       builder: (ctx) {
         return AlertDialog(
           backgroundColor: cs.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(
             'Delete Campaign',
             style: getBoldStyle(fontSize: 18, color: cs.onSurface),
           ),
           content: Text(
             'Are you sure you want to delete this campaign link? This action cannot be undone.',
-            style: getRegularStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: .7)),
+            style: getRegularStyle(
+              fontSize: 14,
+              color: cs.onSurface.withValues(alpha: .7),
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text(
                 'Cancel',
-                style: getMediumStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: .6)),
+                style: getMediumStyle(
+                  fontSize: 14,
+                  color: cs.onSurface.withValues(alpha: .6),
+                ),
               ),
             ),
             ElevatedButton(
               onPressed: () {
-                context.read<CampaignBloc>().add(DeleteCampaignLink(campaign.id));
+                context.read<CampaignBloc>().add(
+                  DeleteCampaignLink(campaign.id),
+                );
                 Navigator.pop(ctx);
               },
               style: ElevatedButton.styleFrom(
