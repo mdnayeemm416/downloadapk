@@ -186,195 +186,71 @@ class _AdminSubscriptionsScreenBodyState
                     ),
                   ),
                 ),
-
-                // ── Bulk Action Toolbar ──
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  height: state.isSelectionMode ? null : 0,
-                  margin: EdgeInsets.only(
-                    top: state.isSelectionMode ? 12 : 0,
-                    left: 16,
-                    right: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark ? cs.onSurface.withValues(alpha: .04) : cs.primaryContainer,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: cs.primary.withValues(alpha: isDark ? .2 : .15),
-                    ),
-                    boxShadow: [
-                      if (!isDark && state.isSelectionMode)
-                        BoxShadow(
-                          color: cs.primary.withValues(alpha: .06),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                    ],
-                  ),
-                  child: state.isSelectionMode
-                      ? Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Header Row
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: cs.primary.withValues(alpha: .1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(Icons.checklist_rounded, size: 20, color: cs.primary),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          state.selectedUserIds.isEmpty
-                                              ? 'Bulk Actions Mode'
-                                              : '${state.selectedUserIds.length} Users Selected',
-                                          style: getBoldStyle(fontSize: 15, color: cs.onSurface),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          state.selectedUserIds.isEmpty
-                                              ? 'Select users below to apply changes'
-                                              : 'Choose an action to apply to selected users',
-                                          style: getRegularStyle(
-                                            fontSize: 12,
-                                            color: cs.onSurface.withValues(alpha: .5),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.close_rounded, size: 20, color: cs.onSurface.withValues(alpha: .6)),
-                                    onPressed: () => context.read<AdminBloc>().add(const ToggleSelectionMode()),
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: cs.onSurface.withValues(alpha: .05),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              
-                              // Action Buttons
-                              AnimatedSize(
-                                duration: const Duration(milliseconds: 300),
-                                child: state.selectedUserIds.isEmpty
-                                    ? const SizedBox.shrink()
-                                    : Padding(
-                                        padding: const EdgeInsets.only(top: 16),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: _BulkActionButton(
-                                                label: 'Disable Auto-Like',
-                                                icon: Icons.subscriptions_outlined,
-                                                color: cs.error,
-                                                onTap: () => context.read<AdminBloc>().add(const BulkUpdateSubscription(0)),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: _BulkActionButton(
-                                                label: 'Enable Auto-Like',
-                                                icon: Icons.subscriptions_rounded,
-                                                color: cs.primary,
-                                                onTap: () => context.read<AdminBloc>().add(const BulkUpdateSubscription(1)),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-                if (!state.isSelectionMode)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => context.read<AdminBloc>().add(const ToggleSelectionMode()),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        decoration: BoxDecoration(
-                          color: isDark ? cs.onSurface.withValues(alpha: .03) : cs.primaryContainer.withValues(alpha: .5),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: cs.primary.withValues(alpha: isDark ? .15 : .1)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Left side: Bulk Actions Title
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: cs.primary.withValues(alpha: .1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(Icons.checklist_rounded, size: 18, color: cs.primary),
-                                ),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Bulk Actions',
-                                      style: getBoldStyle(fontSize: 15, color: cs.onSurface),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'Manage multiple subscriptions',
-                                      style: getRegularStyle(fontSize: 11, color: cs.onSurface.withValues(alpha: .5)),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            // Right side: Total Users Badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: cs.surface,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: cs.primary.withValues(alpha: .1)),
-                                boxShadow: [
-                                  if (!isDark)
-                                    BoxShadow(
-                                      color: cs.primary.withValues(alpha: .04),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.people_rounded, size: 14, color: cs.primary),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '${filteredUsers.length} Users',
-                                    style: getMediumStyle(fontSize: 12, color: cs.primary),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                // ── Statistics Dashboard ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [cs.primary.withValues(alpha: .15), cs.secondary.withValues(alpha: .05)]
+                            : [cs.primary.withValues(alpha: .05), cs.secondary.withValues(alpha: .02)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: cs.primary.withValues(alpha: isDark ? .2 : .1),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        if (!isDark)
+                          BoxShadow(
+                            color: cs.primary.withValues(alpha: .03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildStatItem(
+                          context,
+                          title: 'Total Users',
+                          value: '${state.allUsers.length}',
+                          icon: Icons.people_rounded,
+                          color: cs.primary,
+                        ),
+                        Container(
+                          width: 1,
+                          height: 36,
+                          color: cs.onSurface.withValues(alpha: .1),
+                        ),
+                        _buildStatItem(
+                          context,
+                          title: 'Subscribed',
+                          value: '${state.allUsers.where((u) => u.autolike == 1).length}',
+                          icon: Icons.thumb_up_alt_rounded,
+                          color: cs.secondary,
+                        ),
+                        Container(
+                          width: 1,
+                          height: 36,
+                          color: cs.onSurface.withValues(alpha: .1),
+                        ),
+                        _buildStatItem(
+                          context,
+                          title: 'Filtered',
+                          value: '${filteredUsers.length}',
+                          icon: Icons.filter_list_rounded,
+                          color: Colors.green,
+                        ),
+                      ],
                     ),
                   ),
-
+                ),
                 const SizedBox(height: 12),
 
                 Expanded(child: _buildContent(context, state, filteredUsers, cs, isDark)),
@@ -784,18 +660,6 @@ class _UserManagementCard extends StatelessWidget {
                       color: cs.primary,
                     ),
                   )
-                else if (state.isSelectionMode)
-                  Checkbox(
-                    value: state.selectedUserIds.contains(user.id),
-                    activeColor: cs.primary,
-                    onChanged: (_) {
-                      if (user.id != null) {
-                        context.read<AdminBloc>().add(
-                          ToggleUserSelection(user.id!),
-                        );
-                      }
-                    },
-                  )
                 else
                   PopupMenuButton<String>(
                     icon: Icon(
@@ -848,15 +712,6 @@ class _UserManagementCard extends StatelessWidget {
           Icons.subscriptions_outlined,
           'Disable Auto-Like',
           cs.error,
-        ),
-      );
-    } else {
-      items.add(
-        _menuItem(
-          'enable-autolike',
-          Icons.subscriptions_rounded,
-          'Enable Auto-Like',
-          cs.primary,
         ),
       );
     }
@@ -927,47 +782,36 @@ class _StatusBadge extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════
-//  BULK ACTION BUTTON
+//  STATISTICS ITEM WIDGET
 // ══════════════════════════════════════════════════════════
-class _BulkActionButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _BulkActionButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: color.withValues(alpha: .1),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withValues(alpha: .2)),
+Widget _buildStatItem(
+  BuildContext context, {
+  required String title,
+  required String value,
+  required IconData icon,
+  required Color color,
+}) {
+  final cs = Theme.of(context).colorScheme;
+  return Column(
+    children: [
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            value,
+            style: getBoldStyle(fontSize: 16, color: cs.onSurface),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 18, color: color),
-              const SizedBox(width: 8),
-              Text(label, style: getMediumStyle(fontSize: 13, color: color)),
-            ],
-          ),
-        ),
+        ],
       ),
-    );
-  }
+      const SizedBox(height: 4),
+      Text(
+        title,
+        style: getRegularStyle(fontSize: 11, color: cs.onSurface.withValues(alpha: .5)),
+      ),
+    ],
+  );
 }
 
 // ══════════════════════════════════════════════════════════

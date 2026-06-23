@@ -164,7 +164,6 @@ class _FeedScreenState extends State<FeedScreen> {
           _cardKeys.clear();
           _currentTargetIndex = 0;
           feedBloc.add(ChangeFeedPage(state.currentPage + 1));
-          context.read<ExploreBloc>().add(const RefreshExplore());
         } else {
           _isProcessingTarget = true;
           _scrollToIndex(_currentTargetIndex);
@@ -206,7 +205,6 @@ class _FeedScreenState extends State<FeedScreen> {
               if (_currentTargetIndex == state.links.length - 1) {
                 _cardKeys.clear();
                 feedBloc.add(ChangeFeedPage(state.currentPage + 1));
-                context.read<ExploreBloc>().add(const RefreshExplore());
                 setState(() {
                   _currentTargetIndex = 0;
                   _isProcessingTarget = false;
@@ -483,45 +481,72 @@ class _FeedScreenState extends State<FeedScreen> {
                       if (stats == null) return const SizedBox.shrink();
                       return Padding(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: cs.primaryContainer.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: cs.primary.withValues(alpha: 0.12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Your Stats',
+                                  style: getBoldStyle(
+                                    fontSize: 14,
+                                    color: cs.onSurface.withValues(alpha: .7),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                                  onPressed: () => context.read<ProfileBloc>().add(const LoadProfileStats()),
+                                  style: IconButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: const Size(28, 28),
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              _StatItem(
-                                icon: Icons.thumb_up_alt_rounded,
-                                label: 'Given',
-                                value: '${stats.likesGiven}',
-                                color: cs.primary,
-                                cs: cs,
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
                               ),
-                              _verticalDivider(cs),
-                              _StatItem(
-                                icon: Icons.favorite_rounded,
-                                label: 'Received',
-                                value: '${stats.likesReceived}',
-                                color: cs.error,
-                                cs: cs,
+                              decoration: BoxDecoration(
+                                color: cs.primaryContainer.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: cs.primary.withValues(alpha: 0.12),
+                                ),
                               ),
-                              _verticalDivider(cs),
-                              _StatItem(
-                                icon: Icons.today_rounded,
-                                label: 'Today',
-                                value: '${stats.likesToday}',
-                                color: cs.secondary,
-                                cs: cs,
+                              child: Row(
+                                children: [
+                                  _StatItem(
+                                    icon: Icons.thumb_up_alt_rounded,
+                                    label: 'Given',
+                                    value: '${stats.likesGiven}',
+                                    color: cs.primary,
+                                    cs: cs,
+                                  ),
+                                  _verticalDivider(cs),
+                                  _StatItem(
+                                    icon: Icons.favorite_rounded,
+                                    label: 'Received',
+                                    value: '${stats.likesReceived}',
+                                    color: cs.error,
+                                    cs: cs,
+                                  ),
+                                  _verticalDivider(cs),
+                                  _StatItem(
+                                    icon: Icons.today_rounded,
+                                    label: 'Today',
+                                    value: '${stats.likesToday}',
+                                    color: cs.secondary,
+                                    cs: cs,
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -599,44 +624,83 @@ class _FeedScreenState extends State<FeedScreen> {
                           ),
                         );
                       }
-                      if (noticeState.notices.isEmpty) return const SizedBox();
-
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                         child: Column(
-                          children: noticeState.notices.map((notice) {
-                            Color bg = _parseColor(
-                              notice.bgColor,
-                              cs.primaryContainer,
-                            );
-                            Color text = _parseColor(
-                              notice.textColor,
-                              cs.onSurface,
-                            );
-                            return Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: bg,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: text.withValues(alpha: .25),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Notices',
+                                  style: getBoldStyle(
+                                    fontSize: 14,
+                                    color: cs.onSurface.withValues(alpha: .7),
+                                  ),
                                 ),
-                              ),
-                              child: SelectableText(
-                                notice.text ?? '',
-                                textAlign: TextAlign.center,
-                                style: getSemiBoldStyle(
-                                  fontSize: 14,
-                                  color: text,
+                                IconButton(
+                                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                                  onPressed: () => context.read<NoticeBloc>().add(const LoadNotices()),
+                                  style: IconButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: const Size(28, 28),
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
                                 ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            if (noticeState.notices.isEmpty)
+                              Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: Text(
+                                    'No new notices',
+                                    style: getMediumStyle(
+                                      fontSize: 12,
+                                      color: cs.onSurface.withValues(alpha: .4),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              Column(
+                                children: noticeState.notices.map((notice) {
+                                  Color bg = _parseColor(
+                                    notice.bgColor,
+                                    cs.primaryContainer,
+                                  );
+                                  Color text = _parseColor(
+                                    notice.textColor,
+                                    cs.onSurface,
+                                  );
+                                  return Container(
+                                    width: double.infinity,
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: bg,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: text.withValues(alpha: .25),
+                                      ),
+                                    ),
+                                    child: SelectableText(
+                                      notice.text ?? '',
+                                      textAlign: TextAlign.center,
+                                      style: getSemiBoldStyle(
+                                        fontSize: 14,
+                                        color: text,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
                               ),
-                            );
-                          }).toList(),
+                          ],
                         ),
                       );
                     },
@@ -670,9 +734,6 @@ class _FeedScreenState extends State<FeedScreen> {
                                   onPressed: () {
                                     context.read<FeedBloc>().add(
                                       ChangeFeedPage(state.currentPage + 1),
-                                    );
-                                    context.read<ExploreBloc>().add(
-                                      const RefreshExplore(),
                                     );
                                   },
                                   child: Text(
@@ -763,9 +824,6 @@ class _FeedScreenState extends State<FeedScreen> {
                                         context.read<FeedBloc>().add(
                                           ChangeFeedPage(state.currentPage + 1),
                                         );
-                                        context.read<ExploreBloc>().add(
-                                          const RefreshExplore(),
-                                        );
                                       },
                                       child: Text(
                                         'Refresh',
@@ -800,12 +858,29 @@ class _FeedScreenState extends State<FeedScreen> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.fromLTRB(20, 8, 16, 12),
-                            child: Text(
-                              'Suggested for you',
-                              style: getBoldStyle(
-                                fontSize: 15,
-                                color: cs.onSurface.withValues(alpha: .7),
-                              ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Suggested for you',
+                                  style: getBoldStyle(
+                                    fontSize: 15,
+                                    color: cs.onSurface.withValues(alpha: .7),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 4),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                                    onPressed: () => context.read<ExploreBloc>().add(const RefreshExplore()),
+                                    style: IconButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: const Size(28, 28),
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           SizedBox(

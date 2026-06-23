@@ -256,7 +256,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             // Admin panel — visible for admin and moderator users
                             if (user?.role == 'admin' ||
-                                user?.role == 'moderator') ...[
+                                user?.role == 'moderator')
                               _Item(
                                 icon: Icons.admin_panel_settings_rounded,
                                 label: 'Admin Panel',
@@ -266,6 +266,8 @@ class _HomePageState extends State<HomePage> {
                                   Navigator.pushNamed(context, '/admin');
                                 },
                               ),
+                            // Admin only options
+                            if (user?.role == 'admin') ...[
                               _Item(
                                 icon: Icons.subscriptions_rounded,
                                 label: 'Manage Subscriptions',
@@ -278,19 +280,18 @@ class _HomePageState extends State<HomePage> {
                                   );
                                 },
                               ),
-                              if (user?.role == 'admin')
-                                _Item(
-                                  icon: Icons.account_balance_wallet_rounded,
-                                  label: 'Finance',
-                                  active: false,
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    Navigator.pushNamed(
-                                      context,
-                                      '/admin/finance',
-                                    );
-                                  },
-                                ),
+                              _Item(
+                                icon: Icons.account_balance_wallet_rounded,
+                                label: 'Finance',
+                                active: false,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Navigator.pushNamed(
+                                    context,
+                                    '/admin/finance',
+                                  );
+                                },
+                              ),
                               _Item(
                                 icon: Icons.campaign_rounded,
                                 label: 'Manage Notices',

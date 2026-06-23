@@ -95,19 +95,7 @@ class _AdminScreenBody extends StatelessWidget {
               ],
             ),
             actions: [
-              if (state.currentTab == AdminTab.all)
-                IconButton(
-                  icon: Icon(
-                    state.isSelectionMode
-                        ? Icons.checklist_rtl_rounded
-                        : Icons.checklist_rounded,
-                    color: state.isSelectionMode ? cs.primary : cs.onSurface,
-                  ),
-                  tooltip: 'Toggle Selection Mode',
-                  onPressed: () => context
-                      .read<AdminBloc>()
-                      .add(const ToggleSelectionMode()),
-                ),
+
               // User count badge
               Container(
                 margin: const EdgeInsets.only(right: 16),
@@ -596,7 +584,6 @@ class _UserManagementCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLoading = state.actionUserId == user.id;
-    final actionType = state.actionType;
     final isBlocked = user.isBlocked == 1;
     final isPending = user.isApproved == 0;
     final isAdmin = user.role == 'admin';
@@ -866,10 +853,8 @@ class _UserManagementCard extends StatelessWidget {
 
     if (user.autolike == 1) {
       items.add(_menuItem('disable-autolike', Icons.subscriptions_outlined, 'Disable Auto-Like', cs.error));
-    } else {
-      items.add(_menuItem('enable-autolike', Icons.subscriptions_rounded, 'Enable Auto-Like', cs.primary));
+      items.add(const PopupMenuDivider());
     }
-    items.add(const PopupMenuDivider());
 
     if (isBlocked) {
       items.add(

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:adnetwork/config/theme/styles_manager.dart';
 import 'package:adnetwork/core/extensions/extension.dart';
 import 'package:adnetwork/layers/data/model/campaign_link_model.dart';
@@ -30,6 +31,7 @@ class _CampaignScreenState extends State<CampaignScreen>
   String? _activeAdId;
   DateTime? _activeAdStartTime;
   bool _isWatching = false;
+  int _activeAdDuration = 15;
 
   @override
   void initState() {
@@ -60,7 +62,7 @@ class _CampaignScreenState extends State<CampaignScreen>
     if (state == AppLifecycleState.resumed) {
       if (_isWatching && _activeAdStartTime != null) {
         final elapsed = DateTime.now().difference(_activeAdStartTime!).inSeconds;
-        if (elapsed < 15) {
+        if (elapsed < _activeAdDuration) {
           // Closed early!
           _adTimer?.cancel();
           setState(() {
@@ -79,14 +81,18 @@ class _CampaignScreenState extends State<CampaignScreen>
   }
 
   Future<void> _launchAd(CampaignLinkModel campaign) async {
+    final random = Random();
+    final adDuration = 8 + random.nextInt(8); // random number between 8 and 15 inclusive
+
     setState(() {
       _activeAdId = campaign.id;
       _activeAdStartTime = DateTime.now();
       _isWatching = true;
+      _activeAdDuration = adDuration;
     });
 
-    // Start 15s countdown timer in background
-    _adTimer = Timer(const Duration(seconds: 15), () {
+    // Start random countdown timer in background
+    _adTimer = Timer(Duration(seconds: adDuration), () {
       _onAdCompleted();
     });
 
@@ -433,6 +439,7 @@ class _CampaignScreenState extends State<CampaignScreen>
               },
               onLaunchAd: _launchAd,
               activeAdId: _activeAdId,
+              activeAdDuration: _activeAdDuration,
             ),
             _MyCampaignsTab(isDark: isDark),
           ],
@@ -452,6 +459,7 @@ class _CampaignFeedTab extends StatelessWidget {
   final VoidCallback onStartCampaign;
   final Function(CampaignLinkModel) onLaunchAd;
   final String? activeAdId;
+  final int activeAdDuration;
 
   const _CampaignFeedTab({
     required this.isDark,
@@ -459,6 +467,7 @@ class _CampaignFeedTab extends StatelessWidget {
     required this.onStartCampaign,
     required this.onLaunchAd,
     required this.activeAdId,
+    required this.activeAdDuration,
   });
 
   @override
@@ -815,6 +824,7 @@ class _CampaignFeedTab extends StatelessWidget {
                   }
                 },
                 isActiveWatch: activeAdId == campaign.id,
+                activeAdDuration: activeAdDuration,
               );
             },
           );
@@ -830,6 +840,7 @@ class _CampaignFeedCard extends StatelessWidget {
   final bool isDark;
   final VoidCallback onTap;
   final bool isActiveWatch;
+  final int activeAdDuration;
 
   const _CampaignFeedCard({
     required this.campaign,
@@ -837,6 +848,7 @@ class _CampaignFeedCard extends StatelessWidget {
     required this.isDark,
     required this.onTap,
     required this.isActiveWatch,
+    required this.activeAdDuration,
   });
 
   @override
@@ -918,7 +930,7 @@ class _CampaignFeedCard extends StatelessWidget {
           const SizedBox(height: 16),
           // Yield explanation content
           Text(
-            'Launch this campaign task and watch the sponsor ad for 15 seconds to receive your yield score credit. The tab will automatically close on completion.',
+            'Launch this campaign task and watch the sponsor ad for 8-15 seconds to receive your yield score credit. The tab will automatically close on completion.',
             style: getRegularStyle(
               fontSize: 12,
               color: cs.onSurface.withValues(alpha: .6),
@@ -948,7 +960,7 @@ class _CampaignFeedCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    isActiveWatch ? 'Watching (15s)...' : 'Launch Campaign Ad',
+                    isActiveWatch ? 'Watching (${activeAdDuration}s)...' : 'Launch Campaign Ad',
                     style: getBoldStyle(fontSize: 13, color: cs.onPrimary),
                   ),
                 ],

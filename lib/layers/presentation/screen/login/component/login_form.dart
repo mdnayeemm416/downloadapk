@@ -308,43 +308,125 @@ class LoginForm extends StatelessWidget {
   }
 
   void _showForgotPasswordDialog(BuildContext context) {
-    final controller = TextEditingController(text: emailController.text);
+    final identifierCtrl = TextEditingController(text: emailController.text);
+    final newPasswordCtrl = TextEditingController();
+    final loginBloc = context.read<LoginBloc>();
+    bool obscurePassword = true;
+
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Forgot Password'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter your email or username to request a password reset from an administrator.',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Email or Username',
-                hintText: 'Enter identifier',
-                border: OutlineInputBorder(),
+      builder: (dialogContext) => BlocProvider.value(
+        value: loginBloc,
+        child: StatefulBuilder(
+          builder: (dialogCtrlCtx, setState) {
+            final cs = Theme.of(dialogCtrlCtx).colorScheme;
+            return AlertDialog(
+              backgroundColor: cs.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text(
+                'Forgot Password',
+                style: getBoldStyle(fontSize: 18, color: cs.onSurface),
               ),
-            ),
-          ],
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Enter your username or email and your new password to request a password reset.',
+                      style: getRegularStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: .6)),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: identifierCtrl,
+                      style: getMediumStyle(fontSize: 14, color: cs.onSurface),
+                      decoration: InputDecoration(
+                        labelText: 'Email or Username',
+                        labelStyle: getRegularStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: .5)),
+                        hintText: 'Enter username or email',
+                        hintStyle: getRegularStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: .35)),
+                        border: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                        ),
+                        prefixIcon: Icon(Icons.person_outline_rounded, size: 20, color: cs.primary.withValues(alpha: .6)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: newPasswordCtrl,
+                      obscureText: obscurePassword,
+                      style: getMediumStyle(fontSize: 14, color: cs.onSurface),
+                      decoration: InputDecoration(
+                        labelText: 'New Password',
+                        labelStyle: getRegularStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: .5)),
+                        hintText: 'Enter new password',
+                        hintStyle: getRegularStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: .35)),
+                        border: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                        ),
+                        prefixIcon: Icon(Icons.lock_outline_rounded, size: 20, color: cs.primary.withValues(alpha: .6)),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                            size: 20,
+                            color: cs.onSurface.withValues(alpha: .5),
+                          ),
+                          onPressed: () => setState(() => obscurePassword = !obscurePassword),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(
+                    'Cancel',
+                    style: getMediumStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: .5)),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final id = identifierCtrl.text.trim();
+                    final pwd = newPasswordCtrl.text.trim();
+                    if (id.isEmpty || pwd.isEmpty) {
+                      ScaffoldMessenger.of(dialogCtrlCtx).showSnackBar(
+                        SnackBar(
+                          content: const Text('Please fill in all fields'),
+                          backgroundColor: cs.error,
+                        ),
+                      );
+                      return;
+                    }
+                    if (pwd.length < 6) {
+                      ScaffoldMessenger.of(dialogCtrlCtx).showSnackBar(
+                        SnackBar(
+                          content: const Text('Password must be at least 6 characters'),
+                          backgroundColor: cs.error,
+                        ),
+                      );
+                      return;
+                    }
+                    loginBloc.add(
+                      ForgotPasswordSubmitted(identifier: id, newPassword: pwd),
+                    );
+                    Navigator.pop(dialogContext);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: cs.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    'Request Reset',
+                    style: getBoldStyle(fontSize: 14, color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              context.read<LoginBloc>().add(
-                ForgotPasswordSubmitted(controller.text.trim()),
-              );
-              Navigator.pop(dialogContext);
-            },
-            child: const Text('Request Reset'),
-          ),
-        ],
       ),
     );
   }

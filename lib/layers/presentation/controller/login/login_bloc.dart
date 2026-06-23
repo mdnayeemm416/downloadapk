@@ -143,6 +143,15 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
       );
       return;
     }
+    if (event.newPassword.isEmpty) {
+      emit(
+        state.copyWith(
+          status: LoginStatus.failure,
+          errorMessage: 'Please enter your new password',
+        ),
+      );
+      return;
+    }
 
     emit(
       state.copyWith(
@@ -153,7 +162,10 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
     );
 
     try {
-      final response = await authRepository.forgotPassword(event.identifier);
+      final response = await authRepository.forgotPassword(
+        identifier: event.identifier,
+        newPassword: event.newPassword,
+      );
 
       if (response.isSuccess) {
         emit(

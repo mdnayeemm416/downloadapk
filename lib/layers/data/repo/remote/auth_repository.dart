@@ -62,10 +62,17 @@ class AuthRepository {
   }
 
   /// POST /auth/forgot-password
-  Future<ApiResponse<dynamic>> forgotPassword(String identifier) async {
+  Future<ApiResponse<dynamic>> forgotPassword({
+    required String identifier,
+    required String newPassword,
+  }) async {
     return _api.post(
       ApiEndpoints.forgotPassword,
-      body: {'identifier': identifier},
+      body: {
+        'identifier': identifier,
+        'appname': 'adnetworkpro',
+        'newPassword': newPassword,
+      },
       auth: false,
     );
   }

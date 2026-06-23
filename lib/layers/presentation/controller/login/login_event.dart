@@ -40,8 +40,9 @@ class InitializeRememberMe extends LoginEvent {
 /// Fired when the user requests a password reset
 class ForgotPasswordSubmitted extends LoginEvent {
   final String identifier;
-  const ForgotPasswordSubmitted(this.identifier);
+  final String newPassword;
+  const ForgotPasswordSubmitted({required this.identifier, required this.newPassword});
 
   @override
-  List<Object?> get props => [identifier];
+  List<Object?> get props => [identifier, newPassword];
 }
