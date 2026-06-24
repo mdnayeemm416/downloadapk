@@ -31,9 +31,9 @@ class MyApp extends StatelessWidget {
       child: MultiBlocProvider(
         providers: [
           BlocProvider(
-            create: (ctx) => ProfileBloc(
-              userRepository: ctx.read<UserRepository>(),
-            )..add(const LoadProfile()),
+            create: (ctx) =>
+                ProfileBloc(userRepository: ctx.read<UserRepository>())
+                  ..add(const LoadProfile()),
           ),
           BlocProvider(
             create: (ctx) => CampaignBloc(

@@ -52,3 +52,7 @@ class ClearCampaignErrors extends CampaignEvent {
 class LoadCampaignCompletions extends CampaignEvent {
   const LoadCampaignCompletions();
 }
+
+class LoadCampaignStatus extends CampaignEvent {
+  const LoadCampaignStatus();
+}

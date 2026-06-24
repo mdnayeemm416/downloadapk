@@ -15,6 +15,10 @@ class CampaignState extends Equatable {
   final CampaignActionStatus actionStatus;
   final String actionMessage;
 
+  // New fields for Lightweight Campaign Status
+  final CampaignStatusModel? campaignStatus;
+  final CampaignStatus statusLoadStatus;
+
   const CampaignState({
     this.feedStatus = CampaignStatus.initial,
     this.myLinksStatus = CampaignStatus.initial,
@@ -25,6 +29,8 @@ class CampaignState extends Equatable {
     this.completionsCount = 0,
     this.actionStatus = CampaignActionStatus.initial,
     this.actionMessage = '',
+    this.campaignStatus,
+    this.statusLoadStatus = CampaignStatus.initial,
   });
 
   CampaignState copyWith({
@@ -37,6 +43,8 @@ class CampaignState extends Equatable {
     int? completionsCount,
     CampaignActionStatus? actionStatus,
     String? actionMessage,
+    CampaignStatusModel? campaignStatus,
+    CampaignStatus? statusLoadStatus,
   }) {
     return CampaignState(
       feedStatus: feedStatus ?? this.feedStatus,
@@ -48,6 +56,8 @@ class CampaignState extends Equatable {
       completionsCount: completionsCount ?? this.completionsCount,
       actionStatus: actionStatus ?? this.actionStatus,
       actionMessage: actionMessage ?? this.actionMessage,
+      campaignStatus: campaignStatus ?? this.campaignStatus,
+      statusLoadStatus: statusLoadStatus ?? this.statusLoadStatus,
     );
   }
 
@@ -62,5 +72,7 @@ class CampaignState extends Equatable {
         completionsCount,
         actionStatus,
         actionMessage,
+        campaignStatus,
+        statusLoadStatus,
       ];
 }

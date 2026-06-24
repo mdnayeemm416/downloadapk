@@ -822,12 +822,6 @@ class _UserManagementCard extends StatelessWidget {
       case 'reset-password':
         bloc.add(ResetUserPassword(id));
         break;
-      case 'enable-autolike':
-        bloc.add(UpdateSubscription(id, 1));
-        break;
-      case 'disable-autolike':
-        bloc.add(UpdateSubscription(id, 0));
-        break;
     }
   }
 
@@ -848,11 +842,6 @@ class _UserManagementCard extends StatelessWidget {
         ),
       );
       items.add(_menuItem('reject', Icons.cancel_outlined, 'Reject', cs.error));
-      items.add(const PopupMenuDivider());
-    }
-
-    if (user.autolike == 1) {
-      items.add(_menuItem('disable-autolike', Icons.subscriptions_outlined, 'Disable Auto-Like', cs.error));
       items.add(const PopupMenuDivider());
     }
 

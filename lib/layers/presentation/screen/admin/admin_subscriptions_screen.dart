@@ -714,6 +714,15 @@ class _UserManagementCard extends StatelessWidget {
           cs.error,
         ),
       );
+    } else {
+      items.add(
+        _menuItem(
+          'enable-autolike',
+          Icons.subscriptions_rounded,
+          'Enable Auto-Like',
+          cs.primary,
+        ),
+      );
     }
 
     return items;

@@ -1,5 +1,6 @@
 import 'package:adnetwork/core/services/api_client.dart';
 import 'package:adnetwork/layers/data/model/campaign_link_model.dart';
+import 'package:adnetwork/layers/data/model/campaign_status_model.dart';
 import 'package:adnetwork/layers/dto/api_response.dart';
 
 class CampaignRepository {
@@ -10,6 +11,14 @@ class CampaignRepository {
     return _api.get<CampaignLinkModel>(
       '/api/campaigns',
       fromJsonModel: (json) => CampaignLinkModel.fromJson(json as Map<String, dynamic>),
+    );
+  }
+
+  /// GET /api/campaigns/status
+  Future<ApiResponse<CampaignStatusModel>> getCampaignStatus() async {
+    return _api.get<CampaignStatusModel>(
+      '/api/campaigns/status',
+      fromJsonModel: (json) => CampaignStatusModel.fromJson(json as Map<String, dynamic>),
     );
   }
 

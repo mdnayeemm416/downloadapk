@@ -522,28 +522,93 @@ class _FeedScreenState extends State<FeedScreen> {
                                 children: [
                                   _StatItem(
                                     icon: Icons.thumb_up_alt_rounded,
-                                    label: 'Given',
-                                    value: '${stats.likesGiven}',
+                                    label: 'Given Today',
+                                    value: '${stats.likesGivenToday}',
                                     color: cs.primary,
                                     cs: cs,
                                   ),
                                   _verticalDivider(cs),
                                   _StatItem(
                                     icon: Icons.favorite_rounded,
-                                    label: 'Received',
-                                    value: '${stats.likesReceived}',
+                                    label: 'Received Today',
+                                    value: '${stats.likesReceivedToday}',
                                     color: cs.error,
                                     cs: cs,
                                   ),
-                                  _verticalDivider(cs),
-                                  _StatItem(
-                                    icon: Icons.today_rounded,
-                                    label: 'Today',
-                                    value: '${stats.likesToday}',
-                                    color: cs.secondary,
-                                    cs: cs,
-                                  ),
                                 ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            InkWell(
+                              onTap: () => Navigator.pushNamed(context, '/campaign'),
+                              borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                  horizontal: 16,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      cs.primary,
+                                      Color.lerp(cs.primary, cs.secondary, 0.45)!,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: cs.primary.withValues(alpha: 0.3),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.15),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.rocket_launch_rounded,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Ad Campaigns',
+                                            style: getBoldStyle(
+                                              fontSize: 15,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'View sponsors & boost your score',
+                                            style: getRegularStyle(
+                                              fontSize: 11,
+                                              color: Colors.white.withValues(alpha: 0.8),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const Icon(
+                                      Icons.arrow_forward_ios_rounded,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],

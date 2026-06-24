@@ -4,6 +4,8 @@ class UserStatsModel {
   final int likesToday;
   final int followers;
   final int following;
+  final int likesGivenToday;
+  final int likesReceivedToday;
 
   UserStatsModel({
     this.likesGiven = 0,
@@ -11,6 +13,8 @@ class UserStatsModel {
     this.likesToday = 0,
     this.followers = 0,
     this.following = 0,
+    this.likesGivenToday = 0,
+    this.likesReceivedToday = 0,
   });
 
   factory UserStatsModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +24,8 @@ class UserStatsModel {
       likesToday: json['likes_today'] ?? 0,
       followers: json['followers'] ?? 0,
       following: json['following'] ?? 0,
+      likesGivenToday: json['likes_given_today'] ?? 0,
+      likesReceivedToday: json['likes_received_today'] ?? 0,
     );
   }
 }

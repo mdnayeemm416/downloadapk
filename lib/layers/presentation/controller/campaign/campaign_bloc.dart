@@ -1,4 +1,5 @@
 import 'package:adnetwork/layers/data/model/campaign_link_model.dart';
+import 'package:adnetwork/layers/data/model/campaign_status_model.dart';
 import 'package:adnetwork/layers/data/repo/remote/campaign_repository.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -17,6 +18,7 @@ class CampaignBloc extends Bloc<CampaignEvent, CampaignState> {
     on<LikeCampaignLink>(_onLikeCampaignLink);
     on<ClearCampaignErrors>(_onClearErrors);
     on<LoadCampaignCompletions>(_onLoadCompletions);
+    on<LoadCampaignStatus>(_onLoadStatus);
   }
 
   void _onClearErrors(ClearCampaignErrors event, Emitter<CampaignState> emit) {
@@ -51,6 +53,7 @@ class CampaignBloc extends Bloc<CampaignEvent, CampaignState> {
           feedLinks: links,
           completionsCount: updatedCompletions,
         ));
+        add(const LoadCampaignStatus());
       } else {
         emit(state.copyWith(
           feedStatus: CampaignStatus.error,
@@ -183,6 +186,7 @@ class CampaignBloc extends Bloc<CampaignEvent, CampaignState> {
           feedLinks: feedLinks,
           completionsCount: updatedCompletions,
         ));
+        add(const LoadCampaignStatus());
       } else {
         emit(state.copyWith(
           actionStatus: CampaignActionStatus.error,
@@ -204,5 +208,26 @@ class CampaignBloc extends Bloc<CampaignEvent, CampaignState> {
         emit(state.copyWith(completionsCount: response.data));
       }
     } catch (_) {}
+  }
+
+  Future<void> _onLoadStatus(LoadCampaignStatus event, Emitter<CampaignState> emit) async {
+    emit(state.copyWith(statusLoadStatus: CampaignStatus.loading));
+    try {
+      final response = await campaignRepository.getCampaignStatus();
+      if (response.isSuccess && response.data != null) {
+        emit(state.copyWith(
+          statusLoadStatus: CampaignStatus.loaded,
+          campaignStatus: response.data,
+        ));
+      } else {
+        emit(state.copyWith(
+          statusLoadStatus: CampaignStatus.error,
+        ));
+      }
+    } catch (_) {
+      emit(state.copyWith(
+        statusLoadStatus: CampaignStatus.error,
+      ));
+    }
   }
 }
