@@ -9,6 +9,7 @@ import 'package:adnetwork/layers/presentation/widget/common_text_field.dart';
 import 'package:adnetwork/layers/presentation/widget/gradient_button.dart';
 import 'package:adnetwork/layers/presentation/widget/show_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_custom_tabs/flutter_custom_tabs.dart' as custom_tabs;
 import 'package:intl/intl.dart';
@@ -28,6 +29,8 @@ class _CampaignScreenState extends State<CampaignScreen>
 
   // Background timer tracking state
   Timer? _adTimer;
+  Timer? _countdownTimer;
+  int _secondsRemaining = 0;
   String? _activeAdId;
   DateTime? _activeAdStartTime;
   bool _isWatching = false;
@@ -52,6 +55,7 @@ class _CampaignScreenState extends State<CampaignScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _countdownTimer?.cancel();
     _adTimer?.cancel();
     _tabController.dispose();
     super.dispose();
@@ -62,22 +66,25 @@ class _CampaignScreenState extends State<CampaignScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       if (_isWatching && _activeAdStartTime != null) {
+        // App resumed, let's cancel any active countdown/timers
+        _countdownTimer?.cancel();
+        _adTimer?.cancel();
+
         final elapsed = DateTime.now()
             .difference(_activeAdStartTime!)
             .inSeconds;
-        if (elapsed < _activeAdDuration) {
+        // Check if the timer completed (either seconds remaining reached 0, or elapsed >= active duration)
+        if (_secondsRemaining == 0 || elapsed >= _activeAdDuration) {
+          _onAdCompleted();
+        } else {
           // Closed early!
-          _adTimer?.cancel();
           setState(() {
             _activeAdId = null;
             _activeAdStartTime = null;
             _isWatching = false;
+            _secondsRemaining = 0;
           });
           _showEarlyCloseDialog();
-        } else {
-          // Time met during background suspension or before resumption callback
-          _adTimer?.cancel();
-          _onAdCompleted();
         }
       }
     }
@@ -87,24 +94,41 @@ class _CampaignScreenState extends State<CampaignScreen>
     final random = Random();
     final adDuration =
         10 + random.nextInt(6); // random number between 10 and 15 inclusive
+    final double height = MediaQuery.of(context).size.height;
 
     setState(() {
       _activeAdId = campaign.id;
       _activeAdStartTime = DateTime.now();
       _isWatching = true;
       _activeAdDuration = adDuration;
+      _secondsRemaining = adDuration;
     });
 
-    // Start random countdown timer in background
-    _adTimer = Timer(Duration(seconds: adDuration), () {
-      _onAdCompleted();
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_secondsRemaining > 0) {
+        setState(() {
+          _secondsRemaining--;
+        });
+        if (_secondsRemaining == 0) {
+          _countdownTimer?.cancel();
+          HapticFeedback.vibrate();
+        }
+      }
     });
 
     final theme = Theme.of(context);
     try {
+      // First attempt: Try launching Custom Tab using the device's default browser
       await custom_tabs.launchUrl(
         Uri.parse(campaign.url),
         customTabsOptions: custom_tabs.CustomTabsOptions(
+          partial: custom_tabs.PartialCustomTabsConfiguration(
+            initialHeight: height * 0.9,
+            activityHeightResizeBehavior:
+                custom_tabs.CustomTabsActivityHeightResizeBehavior.fixed,
+            cornerRadius: 16,
+          ),
           colorSchemes: custom_tabs.CustomTabsColorSchemes.defaults(
             toolbarColor: theme.colorScheme.surface,
             navigationBarColor: theme.colorScheme.surface,
@@ -112,7 +136,11 @@ class _CampaignScreenState extends State<CampaignScreen>
           shareState: custom_tabs.CustomTabsShareState.on,
           urlBarHidingEnabled: true,
           showTitle: true,
+          browser: const custom_tabs.CustomTabsBrowserConfiguration(
+            prefersDefaultBrowser: true,
+          ),
         ),
+
         safariVCOptions: custom_tabs.SafariViewControllerOptions(
           preferredBarTintColor: theme.colorScheme.surface,
           preferredControlTintColor: theme.colorScheme.primary,
@@ -122,18 +150,52 @@ class _CampaignScreenState extends State<CampaignScreen>
         ),
       );
     } catch (e) {
-      _adTimer?.cancel();
-      setState(() {
-        _activeAdId = null;
-        _activeAdStartTime = null;
-        _isWatching = false;
-      });
-      if (mounted) {
-        showToast(
-          context: context,
-          message: 'Could not open ad link: $e',
-          toastificationType: ToastificationType.error,
+      // Second attempt (Fallback): If the default browser attempt fails,
+      // launch using default custom tabs configurations as Partial Custom Tab.
+      try {
+        await custom_tabs.launchUrl(
+          Uri.parse(campaign.url),
+          customTabsOptions: custom_tabs.CustomTabsOptions(
+            partial: custom_tabs.PartialCustomTabsConfiguration(
+              initialHeight: height * 0.9,
+              activityHeightResizeBehavior:
+                  custom_tabs.CustomTabsActivityHeightResizeBehavior.fixed,
+              cornerRadius: 16,
+            ),
+            colorSchemes: custom_tabs.CustomTabsColorSchemes.defaults(
+              toolbarColor: theme.colorScheme.surface,
+              navigationBarColor: theme.colorScheme.surface,
+            ),
+            shareState: custom_tabs.CustomTabsShareState.on,
+            urlBarHidingEnabled: true,
+            showTitle: true,
+            browser: const custom_tabs.CustomTabsBrowserConfiguration(
+              prefersDefaultBrowser: true,
+            ),
+          ),
+          safariVCOptions: custom_tabs.SafariViewControllerOptions(
+            preferredBarTintColor: theme.colorScheme.surface,
+            preferredControlTintColor: theme.colorScheme.primary,
+            barCollapsingEnabled: true,
+            dismissButtonStyle:
+                custom_tabs.SafariViewControllerDismissButtonStyle.close,
+          ),
         );
+      } catch (fallbackError) {
+        _countdownTimer?.cancel();
+        setState(() {
+          _activeAdId = null;
+          _activeAdStartTime = null;
+          _isWatching = false;
+          _secondsRemaining = 0;
+        });
+        if (mounted) {
+          showToast(
+            context: context,
+            message: 'Could not open ad link: $fallbackError',
+            toastificationType: ToastificationType.error,
+          );
+        }
       }
     }
   }
@@ -142,8 +204,6 @@ class _CampaignScreenState extends State<CampaignScreen>
     if (_activeAdId == null) return;
 
     final adId = _activeAdId!;
-    // Automatically close the Custom Tab browser
-    custom_tabs.closeCustomTabs();
 
     // Reward scoring
     context.read<CampaignBloc>().add(LikeCampaignLink(adId));
@@ -152,6 +212,7 @@ class _CampaignScreenState extends State<CampaignScreen>
       _activeAdId = null;
       _activeAdStartTime = null;
       _isWatching = false;
+      _secondsRemaining = 0;
     });
   }
 
@@ -326,6 +387,129 @@ class _CampaignScreenState extends State<CampaignScreen>
   Widget build(BuildContext context) {
     final cs = context.colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (_isWatching) {
+      final double progress = _activeAdDuration > 0
+          ? (_activeAdDuration - _secondsRemaining) / _activeAdDuration
+          : 0.0;
+      final isCompleted = _secondsRemaining == 0;
+      final height = MediaQuery.of(context).size.height;
+      final topHeight = height * 0.1; // 10% of screen height
+
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Container(
+                height: topHeight - MediaQuery.of(context).padding.top,
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 4.0,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [cs.surface, cs.surface.withValues(alpha: 0.85)]
+                        : [const Color(0xFF0F0F0F), Colors.black],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: (isCompleted ? Colors.green : cs.primary)
+                          .withValues(alpha: 0.3),
+                      width: 1.2,
+                    ),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isCompleted ? Colors.green : cs.primary)
+                          .withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          value: progress,
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            isCompleted ? Colors.green : cs.primary,
+                          ),
+                          backgroundColor: Colors.white10,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        isCompleted ? '✓' : '${_secondsRemaining}s',
+                        style: getBoldStyle(
+                          fontSize: 12,
+                          color: isCompleted ? Colors.green : Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        '|',
+                        style: TextStyle(color: Colors.white24, fontSize: 12),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          isCompleted
+                              ? 'বিজ্ঞাপন সম্পন্ন! নিচে ব্রাউজারটি বন্ধ করে ফিরে আসুন।'
+                              : 'বিজ্ঞাপন ভেরিফাই হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...',
+                          style: getMediumStyle(
+                            fontSize: 11,
+                            color: Colors.white,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.open_in_new_rounded,
+                        color: Colors.white12,
+                        size: 32,
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Sponsor website is shown below',
+                        style: TextStyle(color: Colors.white12, fontSize: 11),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final state = context.watch<CampaignBloc>().state;
     final unlikedLinks = state.feedLinks.where((l) => !l.isLiked).toList();
     final canPop = !_campaignStarted || unlikedLinks.isEmpty;
@@ -650,7 +834,8 @@ class _CampaignFeedTab extends StatelessWidget {
             final status = state.campaignStatus;
             final bool isAvailable = status?.campaignsAvailable ?? true;
             final int timeRemaining = status?.timeRemaining ?? 0;
-            final String timeReadable = status?.timeRemainingReadable ?? "0 hours and 0 minutes";
+            final String timeReadable =
+                status?.timeRemainingReadable ?? "0 hours and 0 minutes";
             final int completedToday = status?.completedToday ?? 0;
             final bool isOnCooldown = !isAvailable || timeRemaining > 0;
 
@@ -668,27 +853,27 @@ class _CampaignFeedTab extends StatelessWidget {
                       gradient: LinearGradient(
                         colors: isOnCooldown
                             ? (isDark
-                                ? [
-                                    Colors.orange.withValues(alpha: .08),
-                                    cs.error.withValues(alpha: .04),
-                                    cs.surface,
-                                  ]
-                                : [
-                                    Colors.orange.withValues(alpha: .04),
-                                    cs.error.withValues(alpha: .02),
-                                    cs.surface,
-                                  ])
+                                  ? [
+                                      Colors.orange.withValues(alpha: .08),
+                                      cs.error.withValues(alpha: .04),
+                                      cs.surface,
+                                    ]
+                                  : [
+                                      Colors.orange.withValues(alpha: .04),
+                                      cs.error.withValues(alpha: .02),
+                                      cs.surface,
+                                    ])
                             : (isDark
-                                ? [
-                                    cs.primary.withValues(alpha: .12),
-                                    cs.secondary.withValues(alpha: .06),
-                                    cs.surface,
-                                  ]
-                                : [
-                                    cs.primary.withValues(alpha: .06),
-                                    cs.secondary.withValues(alpha: .03),
-                                    cs.surface,
-                                  ]),
+                                  ? [
+                                      cs.primary.withValues(alpha: .12),
+                                      cs.secondary.withValues(alpha: .06),
+                                      cs.surface,
+                                    ]
+                                  : [
+                                      cs.primary.withValues(alpha: .06),
+                                      cs.secondary.withValues(alpha: .03),
+                                      cs.surface,
+                                    ]),
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -701,9 +886,8 @@ class _CampaignFeedTab extends StatelessWidget {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: (isOnCooldown ? Colors.orange : cs.primary).withValues(
-                            alpha: isDark ? .15 : .05,
-                          ),
+                          color: (isOnCooldown ? Colors.orange : cs.primary)
+                              .withValues(alpha: isDark ? .15 : .05),
                           blurRadius: 30,
                           offset: const Offset(0, 15),
                         ),
@@ -727,14 +911,18 @@ class _CampaignFeedTab extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: (isOnCooldown ? Colors.orange : cs.primary).withValues(alpha: .25),
+                                color:
+                                    (isOnCooldown ? Colors.orange : cs.primary)
+                                        .withValues(alpha: .25),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
                             ],
                           ),
                           child: Text(
-                            isOnCooldown ? 'COOLDOWN ACTIVE' : 'HIGH-YIELD OPTION',
+                            isOnCooldown
+                                ? 'COOLDOWN ACTIVE'
+                                : 'HIGH-YIELD OPTION',
                             style: getBoldStyle(
                               fontSize: 10,
                               color: cs.onPrimary,
@@ -750,7 +938,9 @@ class _CampaignFeedTab extends StatelessWidget {
                               width: 110,
                               height: 110,
                               decoration: BoxDecoration(
-                                color: (isOnCooldown ? Colors.orange : cs.primary).withValues(alpha: .08),
+                                color:
+                                    (isOnCooldown ? Colors.orange : cs.primary)
+                                        .withValues(alpha: .08),
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -762,11 +952,19 @@ class _CampaignFeedTab extends StatelessWidget {
                                   colors: isOnCooldown
                                       ? [
                                           Colors.orange,
-                                          Color.lerp(Colors.orange, cs.error, 0.5)!,
+                                          Color.lerp(
+                                            Colors.orange,
+                                            cs.error,
+                                            0.5,
+                                          )!,
                                         ]
                                       : [
                                           cs.primary,
-                                          Color.lerp(cs.primary, cs.secondary, 0.5)!,
+                                          Color.lerp(
+                                            cs.primary,
+                                            cs.secondary,
+                                            0.5,
+                                          )!,
                                         ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
@@ -774,7 +972,11 @@ class _CampaignFeedTab extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(24),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: (isOnCooldown ? Colors.orange : cs.primary).withValues(alpha: .35),
+                                    color:
+                                        (isOnCooldown
+                                                ? Colors.orange
+                                                : cs.primary)
+                                            .withValues(alpha: .35),
                                     blurRadius: 16,
                                     offset: const Offset(0, 8),
                                   ),
@@ -813,22 +1015,36 @@ class _CampaignFeedTab extends StatelessWidget {
                         if (isOnCooldown) ...[
                           const SizedBox(height: 16),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: isDark ? .1 : .05),
+                              color: Colors.orange.withValues(
+                                alpha: isDark ? .1 : .05,
+                              ),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.orange.withValues(alpha: .2)),
+                              border: Border.all(
+                                color: Colors.orange.withValues(alpha: .2),
+                              ),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.hourglass_bottom_rounded, color: Colors.orange.shade700, size: 18),
+                                Icon(
+                                  Icons.hourglass_bottom_rounded,
+                                  color: Colors.orange.shade700,
+                                  size: 18,
+                                ),
                                 const SizedBox(width: 8),
                                 Flexible(
                                   child: Text(
                                     "Remaining: $timeReadable",
-                                    style: getSemiBoldStyle(fontSize: 13, color: Colors.orange.shade700),
+                                    style: getSemiBoldStyle(
+                                      fontSize: 13,
+                                      color: Colors.orange.shade700,
+                                    ),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -845,7 +1061,9 @@ class _CampaignFeedTab extends StatelessWidget {
                             Expanded(
                               child: _StatCard(
                                 title: 'Ads Available',
-                                value: isOnCooldown ? '0' : '${state.feedLinks.length}',
+                                value: isOnCooldown
+                                    ? '0'
+                                    : '${state.feedLinks.length}',
                                 icon: Icons.filter_none_rounded,
                                 color: cs.primary,
                                 isDark: isDark,
@@ -866,8 +1084,12 @@ class _CampaignFeedTab extends StatelessWidget {
                               child: _StatCard(
                                 title: 'Status',
                                 value: isOnCooldown ? 'Cooldown' : 'Ready',
-                                icon: isOnCooldown ? Icons.timer_rounded : Icons.flash_on_rounded,
-                                color: isOnCooldown ? Colors.orange : Colors.blue,
+                                icon: isOnCooldown
+                                    ? Icons.timer_rounded
+                                    : Icons.flash_on_rounded,
+                                color: isOnCooldown
+                                    ? Colors.orange
+                                    : Colors.blue,
                                 isDark: isDark,
                               ),
                             ),
@@ -875,8 +1097,12 @@ class _CampaignFeedTab extends StatelessWidget {
                         ),
                         const SizedBox(height: 32),
                         GradientButton(
-                          buttonName: isOnCooldown ? 'Cooldown Active' : 'Start Campaign',
-                          icon: isOnCooldown ? Icons.lock_outline_rounded : Icons.rocket_launch_rounded,
+                          buttonName: isOnCooldown
+                              ? 'Cooldown Active'
+                              : 'Start Campaign',
+                          icon: isOnCooldown
+                              ? Icons.lock_outline_rounded
+                              : Icons.rocket_launch_rounded,
                           onPressed: isOnCooldown ? null : onStartCampaign,
                         ),
                       ],
@@ -1499,11 +1725,7 @@ class _MyCampaignsTab extends StatelessWidget {
                       return;
                     }
                     // Submit
-                    context.read<CampaignBloc>().add(
-                      AddCampaignLink(
-                        url: url,
-                      ),
-                    );
+                    context.read<CampaignBloc>().add(AddCampaignLink(url: url));
 
                     Navigator.pop(ctx);
                   },

@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:adnetwork/core/services/link_queue_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-/// 2 WebView instances stacked vertically (35px each), loading URLs
-/// directly as top-level pages — no iframes, no X-Frame-Options issues.
+/// WebView instances loading URLs directly as top-level pages.
 class LinkQueueOverlay extends StatelessWidget {
   final bool isPipMode;
 
@@ -20,107 +18,145 @@ class LinkQueueOverlay extends StatelessWidget {
       builder: (context, snapshot) {
         final slots = snapshot.data ?? [];
         final activeCount = slots.where((s) => s != null).length;
-        if (activeCount == 0) return const SizedBox.shrink();
 
-        return RepaintBoundary(
-          child: isPipMode
-              ? Column(
-                  children: [
-                    for (int i = 0; i < LinkQueueManager.maxSlots; i++)
-                      if (slots.length > i && slots[i] != null)
-                        Expanded(
-                          key: ValueKey(
-                            'slot_${i}_${slots[i]!.url}_${slots[i]!.retryCount}_${slots[i]!.displayedAt.millisecondsSinceEpoch}',
-                          ),
-                          child: _SlotWebView(slotIndex: i, url: slots[i]!.url),
+        // Keep the WebViews in the tree but offstage when there is no work
+        return Offstage(
+          offstage: activeCount == 0,
+          child: RepaintBoundary(
+            child: isPipMode
+                ? Column(
+                    children: [
+                      for (int i = 0; i < LinkQueueManager.maxSlots; i++)
+                        _SlotWrapper(
+                          slotIndex: i,
+                          isPipMode: true,
+                          activeLink: slots.length > i ? slots[i] : null,
                         ),
-                  ],
-                )
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (int i = 0; i < LinkQueueManager.maxSlots; i++)
-                      if (slots.length > i && slots[i] != null)
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          width: 80,
-                          height: 142,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.5),
-                              width: 1.5,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10.5),
-                            child: Stack(
-                              children: [
-                                FittedBox(
-                                  fit: BoxFit.contain,
-                                  child: SizedBox(
-                                    key: ValueKey(
-                                      'slot_${i}_${slots[i]!.url}_${slots[i]!.retryCount}_${slots[i]!.displayedAt.millisecondsSinceEpoch}',
-                                    ),
-                                    width: 360,
-                                    height: 640,
-                                    child: _SlotWebView(
-                                      slotIndex: i,
-                                      url: slots[i]!.url,
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 4,
-                                  left: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 5,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.65,
-                                      ),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      'Slot ${i + 1}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                    ],
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (int i = 0; i < LinkQueueManager.maxSlots; i++)
+                        _SlotWrapper(
+                          slotIndex: i,
+                          isPipMode: false,
+                          activeLink: slots.length > i ? slots[i] : null,
                         ),
-                  ],
-                ),
+                    ],
+                  ),
+          ),
         );
       },
     );
   }
 }
 
-/// A single 35px-tall WebView that loads a URL directly (top-level page).
+class _SlotWrapper extends StatelessWidget {
+  final int slotIndex;
+  final bool isPipMode;
+  final ActiveLink? activeLink;
+
+  const _SlotWrapper({
+    required this.slotIndex,
+    required this.isPipMode,
+    required this.activeLink,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isActive = activeLink != null;
+
+    if (isPipMode) {
+      return Expanded(
+        child: Offstage(
+          offstage: !isActive,
+          child: _SlotWebView(
+            key: ValueKey('slot_$slotIndex'),
+            slotIndex: slotIndex,
+            activeLink: activeLink,
+          ),
+        ),
+      );
+    } else {
+      return Offstage(
+        offstage: !isActive,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: 80,
+          height: 142,
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+              width: 1.5,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10.5),
+            child: Stack(
+              children: [
+                FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: 360,
+                    height: 640,
+                    child: _SlotWebView(
+                      key: ValueKey('slot_$slotIndex'),
+                      slotIndex: slotIndex,
+                      activeLink: activeLink,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 4,
+                  left: 4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(
+                        alpha: 0.65,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Slot ${slotIndex + 1}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+  }
+}
+
 class _SlotWebView extends StatefulWidget {
   final int slotIndex;
-  final String url;
+  final ActiveLink? activeLink;
 
-  const _SlotWebView({super.key, required this.slotIndex, required this.url});
+  const _SlotWebView({
+    super.key,
+    required this.slotIndex,
+    required this.activeLink,
+  });
 
   @override
   State<_SlotWebView> createState() => _SlotWebViewState();
@@ -130,10 +166,11 @@ class _SlotWebViewState extends State<_SlotWebView> {
   late final WebViewController _controller;
   Timer? _viewTimer;
   Timer? _timeoutTimer;
-  bool _isLoading = true;
+  bool _isLoading = false;
   bool _finished = false;
   int _blankSecondsCount = 0;
   int _inWebViewReloadCount = 0;
+  String? _loadedUrl;
 
   @override
   void initState() {
@@ -144,23 +181,29 @@ class _SlotWebViewState extends State<_SlotWebView> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
-            setState(() {
-              _isLoading = true;
-            });
+            if (mounted) {
+              setState(() {
+                _isLoading = true;
+              });
+            }
             // Reset the countdown view timer on new page loads/redirects
             _viewTimer?.cancel();
             _blankSecondsCount = 0;
           },
           onPageFinished: (String url) {
-            setState(() {
-              _isLoading = false;
-            });
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
+            }
             _onPageFinished(url);
           },
           onWebResourceError: (WebResourceError error) {
-            setState(() {
-              _isLoading = false;
-            });
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
+            }
             _onWebResourceError(error);
           },
           onHttpError: (HttpResponseError error) {
@@ -172,27 +215,67 @@ class _SlotWebViewState extends State<_SlotWebView> {
         ),
       );
 
+    _checkAndLoad();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SlotWebView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.activeLink?.url != oldWidget.activeLink?.url ||
+        widget.activeLink?.retryCount != oldWidget.activeLink?.retryCount ||
+        widget.activeLink?.displayedAt != oldWidget.activeLink?.displayedAt) {
+      _checkAndLoad();
+    }
+  }
+
+  void _checkAndLoad() {
+    final link = widget.activeLink;
+    if (link == null) {
+      // Slot became idle, load about:blank to release resources and stop audio/video
+      if (_loadedUrl != null && _loadedUrl != 'about:blank') {
+        _loadedUrl = 'about:blank';
+        _finished = true;
+        _isLoading = false;
+        _viewTimer?.cancel();
+        _timeoutTimer?.cancel();
+        try {
+          _controller.loadRequest(Uri.parse('about:blank'));
+        } catch (_) {}
+      }
+      return;
+    }
+
+    _loadedUrl = link.url;
+    _finished = false;
+    _isLoading = true;
+    _blankSecondsCount = 0;
+    _inWebViewReloadCount = 0;
+
+    _viewTimer?.cancel();
+    _timeoutTimer?.cancel();
+
     try {
-      final uri = Uri.parse(widget.url);
+      final uri = Uri.parse(link.url);
       _controller.loadRequest(uri);
     } catch (e) {
       debugPrint(
-        '[LinkQueue] ❌ Slot ${widget.slotIndex} Invalid URL: ${widget.url}',
+        '[LinkQueue] ❌ Slot ${widget.slotIndex} Invalid URL: ${link.url}',
       );
       _finished = true;
+      _isLoading = false;
       // Mark as error immediately so it's removed from queue
       WidgetsBinding.instance.addPostFrameCallback((_) {
         LinkQueueManager.instance.onSlotError(widget.slotIndex);
       });
     }
 
-    debugPrint('[LinkQueue] ▶ Slot ${widget.slotIndex} loading: ${widget.url}');
+    debugPrint('[LinkQueue] ▶ Slot ${widget.slotIndex} loading: ${link.url}');
 
-    // ── HARD TIMEOUT: 30s max to load. If page doesn't load by then → error ──
+    // ── HARD TIMEOUT: 30s max to load ──
     _timeoutTimer = Timer(const Duration(seconds: 30), () {
-      if (!_finished) {
+      if (!_finished && mounted) {
         debugPrint(
-          '[LinkQueue] ⏰ Slot ${widget.slotIndex} timed out (30s): ${widget.url}',
+          '[LinkQueue] ⏰ Slot ${widget.slotIndex} timed out (30s): ${link.url}',
         );
         _finished = true;
         _viewTimer?.cancel();
@@ -211,6 +294,7 @@ class _SlotWebViewState extends State<_SlotWebView> {
   /// Page loaded — check if it's an actual page or an error page.
   void _onPageFinished(String url) async {
     if (_finished) return;
+    if (url == 'about:blank') return;
 
     // Cancel the 30s timeout and any active view timers from previous redirects
     _timeoutTimer?.cancel();
@@ -222,6 +306,7 @@ class _SlotWebViewState extends State<_SlotWebView> {
   /// Check if the page has rendered actual contents (not a blank/white screen)
   void _checkPageLoaded(String url) async {
     if (_finished) return;
+    if (widget.activeLink == null) return;
 
     try {
       final result = await _controller.runJavaScriptReturningResult('''
@@ -274,15 +359,15 @@ class _SlotWebViewState extends State<_SlotWebView> {
             _inWebViewReloadCount++;
             _blankSecondsCount = 0;
             debugPrint(
-              '[LinkQueue] 🔄 Slot ${widget.slotIndex} has been blank for 6s. Re-hitting link (attempt $_inWebViewReloadCount/2): ${widget.url}',
+              '[LinkQueue] 🔄 Slot ${widget.slotIndex} has been blank for 6s. Re-hitting link (attempt $_inWebViewReloadCount/2): ${widget.activeLink?.url}',
             );
 
             // Reset the load timeout timer
             _timeoutTimer?.cancel();
             _timeoutTimer = Timer(const Duration(seconds: 30), () {
-              if (!_finished) {
+              if (!_finished && mounted) {
                 debugPrint(
-                  '[LinkQueue] ⏰ Slot ${widget.slotIndex} timed out (30s): ${widget.url}',
+                  '[LinkQueue] ⏰ Slot ${widget.slotIndex} timed out (30s): ${widget.activeLink?.url}',
                 );
                 _finished = true;
                 _viewTimer?.cancel();
@@ -292,7 +377,7 @@ class _SlotWebViewState extends State<_SlotWebView> {
 
             // Reload/re-hit the request in this webview
             try {
-              final uri = Uri.parse(widget.url);
+              final uri = Uri.parse(widget.activeLink!.url);
               _controller.loadRequest(uri);
             } catch (_) {}
             return;
@@ -308,7 +393,11 @@ class _SlotWebViewState extends State<_SlotWebView> {
         );
         _viewTimer = Timer(
           const Duration(seconds: 1),
-          () => _checkPageLoaded(url),
+          () {
+            if (mounted) {
+              _checkPageLoaded(url);
+            }
+          },
         );
         return;
       }
@@ -321,7 +410,7 @@ class _SlotWebViewState extends State<_SlotWebView> {
     debugPrint('[LinkQueue] ✅ Slot ${widget.slotIndex} loaded content: $url');
     final duration = LinkQueueManager.instance.randomViewDuration;
     _viewTimer = Timer(duration, () {
-      if (!_finished) {
+      if (!_finished && mounted) {
         _finished = true;
         LinkQueueManager.instance.onSlotFinished(widget.slotIndex);
       }

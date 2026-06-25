@@ -372,7 +372,7 @@ class _HomePageState extends State<HomePage> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 24),
                       child: Text(
-                        'Ad Network v1.0.6',
+                        'Ad Network v1.0.7',
                         style: getRegularStyle(
                           fontSize: 11,
                           color: cs.onSurface.withValues(alpha: .25),
@@ -407,19 +407,18 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ],
                       ),
-                      if (!isPip)
-                        const Positioned(
-                          left: 16,
-                          bottom: 16,
-                          child: LinkQueueOverlay(isPipMode: false),
+                      Positioned(
+                        left: isPip ? 0 : 16,
+                        right: isPip ? 0 : null,
+                        top: isPip ? 0 : null,
+                        bottom: isPip ? 0 : 16,
+                        child: Container(
+                          color: isPip
+                              ? Theme.of(context).colorScheme.surface
+                              : Colors.transparent,
+                          child: LinkQueueOverlay(isPipMode: isPip),
                         ),
-                      if (isPip)
-                        Positioned.fill(
-                          child: Container(
-                            color: Theme.of(context).colorScheme.surface,
-                            child: const LinkQueueOverlay(isPipMode: true),
-                          ),
-                        ),
+                      ),
                     ],
                   );
                 },

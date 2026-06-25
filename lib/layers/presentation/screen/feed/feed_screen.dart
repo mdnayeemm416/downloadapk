@@ -495,12 +495,18 @@ class _FeedScreenState extends State<FeedScreen> {
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                                  onPressed: () => context.read<ProfileBloc>().add(const LoadProfileStats()),
+                                  icon: const Icon(
+                                    Icons.refresh_rounded,
+                                    size: 18,
+                                  ),
+                                  onPressed: () => context
+                                      .read<ProfileBloc>()
+                                      .add(const LoadProfileStats()),
                                   style: IconButton.styleFrom(
                                     padding: EdgeInsets.zero,
                                     minimumSize: const Size(28, 28),
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                 ),
                               ],
@@ -512,7 +518,9 @@ class _FeedScreenState extends State<FeedScreen> {
                                 horizontal: 8,
                               ),
                               decoration: BoxDecoration(
-                                color: cs.primaryContainer.withValues(alpha: 0.5),
+                                color: cs.primaryContainer.withValues(
+                                  alpha: 0.5,
+                                ),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
                                   color: cs.primary.withValues(alpha: 0.12),
@@ -540,7 +548,8 @@ class _FeedScreenState extends State<FeedScreen> {
                             ),
                             const SizedBox(height: 12),
                             InkWell(
-                              onTap: () => Navigator.pushNamed(context, '/campaign'),
+                              onTap: () =>
+                                  Navigator.pushNamed(context, '/campaign'),
                               borderRadius: BorderRadius.circular(16),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
@@ -551,7 +560,11 @@ class _FeedScreenState extends State<FeedScreen> {
                                   gradient: LinearGradient(
                                     colors: [
                                       cs.primary,
-                                      Color.lerp(cs.primary, cs.secondary, 0.45)!,
+                                      Color.lerp(
+                                        cs.primary,
+                                        cs.secondary,
+                                        0.45,
+                                      )!,
                                     ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
@@ -570,7 +583,9 @@ class _FeedScreenState extends State<FeedScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.15),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.15,
+                                        ),
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(
@@ -582,7 +597,8 @@ class _FeedScreenState extends State<FeedScreen> {
                                     const SizedBox(width: 14),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'Ad Campaigns',
@@ -596,7 +612,9 @@ class _FeedScreenState extends State<FeedScreen> {
                                             'View sponsors & boost your score',
                                             style: getRegularStyle(
                                               fontSize: 11,
-                                              color: Colors.white.withValues(alpha: 0.8),
+                                              color: Colors.white.withValues(
+                                                alpha: 0.8,
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -705,12 +723,18 @@ class _FeedScreenState extends State<FeedScreen> {
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                                  onPressed: () => context.read<NoticeBloc>().add(const LoadNotices()),
+                                  icon: const Icon(
+                                    Icons.refresh_rounded,
+                                    size: 18,
+                                  ),
+                                  onPressed: () => context
+                                      .read<NoticeBloc>()
+                                      .add(const LoadNotices()),
                                   style: IconButton.styleFrom(
                                     padding: EdgeInsets.zero,
                                     minimumSize: const Size(28, 28),
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                 ),
                               ],
@@ -719,7 +743,9 @@ class _FeedScreenState extends State<FeedScreen> {
                             if (noticeState.notices.isEmpty)
                               Center(
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
                                   child: Text(
                                     'No new notices',
                                     style: getMediumStyle(
@@ -936,12 +962,18 @@ class _FeedScreenState extends State<FeedScreen> {
                                 Padding(
                                   padding: const EdgeInsets.only(right: 4),
                                   child: IconButton(
-                                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                                    onPressed: () => context.read<ExploreBloc>().add(const RefreshExplore()),
+                                    icon: const Icon(
+                                      Icons.refresh_rounded,
+                                      size: 18,
+                                    ),
+                                    onPressed: () => context
+                                        .read<ExploreBloc>()
+                                        .add(const RefreshExplore()),
                                     style: IconButton.styleFrom(
                                       padding: EdgeInsets.zero,
                                       minimumSize: const Size(28, 28),
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                     ),
                                   ),
                                 ),
@@ -1010,7 +1042,7 @@ class _FeedScreenState extends State<FeedScreen> {
                     },
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 48)),
+                const SliverToBoxAdapter(child: SizedBox(height: 200)),
               ],
             ),
           );
@@ -1127,7 +1159,9 @@ class _FeedScreenState extends State<FeedScreen> {
               double? price;
 
               if (snapshot.connectionState == ConnectionState.done) {
-                if (snapshot.hasData && snapshot.data!.isSuccess && snapshot.data!.data is Map) {
+                if (snapshot.hasData &&
+                    snapshot.data!.isSuccess &&
+                    snapshot.data!.data is Map) {
                   final priceVal = snapshot.data!.data['price'];
                   if (priceVal != null) {
                     price = double.tryParse(priceVal.toString());
@@ -1170,7 +1204,10 @@ class _FeedScreenState extends State<FeedScreen> {
                       decoration: BoxDecoration(
                         color: Colors.amber.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.amber.shade700, width: 2),
+                        border: Border.all(
+                          color: Colors.amber.shade700,
+                          width: 2,
+                        ),
                       ),
                       child: Icon(
                         Icons.workspace_premium_rounded,
@@ -1206,7 +1243,10 @@ class _FeedScreenState extends State<FeedScreen> {
 
                     // Dynamic Price Section
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.amber.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(16),
@@ -1231,13 +1271,16 @@ class _FeedScreenState extends State<FeedScreen> {
                               color: isDark ? Colors.white : cs.onSurface,
                             ),
                           ),
-                          if (snapshot.connectionState == ConnectionState.waiting)
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting)
                             const SizedBox(
                               width: 14,
                               height: 14,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.amber),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.amber,
+                                ),
                               ),
                             )
                           else
@@ -1268,7 +1311,10 @@ class _FeedScreenState extends State<FeedScreen> {
                           ),
                           child: Text(
                             'বিকাশ • নগদ • রকেট • উপায়',
-                            style: getBoldStyle(fontSize: 12, color: cs.primary),
+                            style: getBoldStyle(
+                              fontSize: 12,
+                              color: cs.primary,
+                            ),
                           ),
                         ),
                       ],
@@ -1369,7 +1415,10 @@ class _FeedScreenState extends State<FeedScreen> {
                         onPressed: () => Navigator.pop(context),
                         child: Text(
                           'বন্ধ করুন',
-                          style: getBoldStyle(fontSize: 15, color: Colors.white),
+                          style: getBoldStyle(
+                            fontSize: 15,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
