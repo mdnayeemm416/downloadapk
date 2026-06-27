@@ -62,6 +62,7 @@ class LinkQueueManager {
 
   late SharedPreferences _prefs;
   final _random = Random();
+  Timer? _sweeperTimer;
 
   /// Pending URLs with retry counts.
   final List<_PendingUrl> _pending = [];
@@ -100,6 +101,42 @@ class LinkQueueManager {
     _promoteToSlots();
     _persist();
     _emit();
+
+    // Periodic sweeper: every 15s, force-expire any slot older than 45s.
+    // Belt-and-suspenders safeguard in case the WebView overlay fails to
+    // call onSlotFinished/onSlotError.
+    _sweeperTimer?.cancel();
+    _sweeperTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _sweepStuckSlots();
+    });
+  }
+
+  /// Force-expire any slot whose link has been active for more than 45 seconds.
+  void _sweepStuckSlots() {
+    final now = DateTime.now();
+    bool changed = false;
+    for (int i = 0; i < maxSlots; i++) {
+      final link = _slots[i];
+      if (link != null) {
+        final elapsed = now.difference(link.displayedAt).inSeconds;
+        if (elapsed > 45) {
+          debugPrint(
+            '[LinkQueue] \u{1F9F9} Sweeper: slot $i stuck for ${elapsed}s, force-expiring: ${link.url}',
+          );
+          // Emit completed so the like API is still called
+          if (link.linkId != null && link.linkId!.isNotEmpty) {
+            _completedLinkController.add(link.linkId!);
+          }
+          _slots[i] = null;
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      _promoteToSlots();
+      _persist();
+      _emit();
+    }
   }
 
   /// Add a URL to the pending queue.
@@ -239,7 +276,22 @@ class LinkQueueManager {
         final json = jsonDecode(raw) as Map<String, dynamic>;
         final slot = json['slot'] as int;
         if (slot >= 0 && slot < maxSlots) {
-          _slots[slot] = ActiveLink.fromJson(json);
+          final link = ActiveLink.fromJson(json);
+          // If the link is older than 60s (stale from a previous app session),
+          // move it back to pending for a fresh retry instead of leaving it
+          // stuck in a slot with no WebView attached.
+          if (link.isExpired || DateTime.now().difference(link.displayedAt).inSeconds > 60) {
+            debugPrint(
+              '[LinkQueue] \u267b\ufe0f Stale active link in slot $slot moved to pending: ${link.url}',
+            );
+            _pending.add(_PendingUrl(
+              url: link.url,
+              linkId: link.linkId,
+              retryCount: link.retryCount,
+            ));
+          } else {
+            _slots[slot] = link;
+          }
         }
       } catch (_) {}
     }
@@ -248,6 +300,7 @@ class LinkQueueManager {
   void dispose() {
     _controller.close();
     _completedLinkController.close();
+    _sweeperTimer?.cancel();
   }
 }
 

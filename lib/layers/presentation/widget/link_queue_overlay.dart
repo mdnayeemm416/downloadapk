@@ -166,6 +166,7 @@ class _SlotWebViewState extends State<_SlotWebView> {
   late final WebViewController _controller;
   Timer? _viewTimer;
   Timer? _timeoutTimer;
+  Timer? _masterTimeout; // Safety-net: guarantees slot is freed no matter what
   bool _isLoading = false;
   bool _finished = false;
   int _blankSecondsCount = 0;
@@ -238,6 +239,7 @@ class _SlotWebViewState extends State<_SlotWebView> {
         _isLoading = false;
         _viewTimer?.cancel();
         _timeoutTimer?.cancel();
+        _masterTimeout?.cancel();
         try {
           _controller.loadRequest(Uri.parse('about:blank'));
         } catch (_) {}
@@ -253,6 +255,7 @@ class _SlotWebViewState extends State<_SlotWebView> {
 
     _viewTimer?.cancel();
     _timeoutTimer?.cancel();
+    _masterTimeout?.cancel();
 
     try {
       final uri = Uri.parse(link.url);
@@ -275,10 +278,11 @@ class _SlotWebViewState extends State<_SlotWebView> {
     _timeoutTimer = Timer(const Duration(seconds: 30), () {
       if (!_finished && mounted) {
         debugPrint(
-          '[LinkQueue] ⏰ Slot ${widget.slotIndex} timed out (30s): ${link.url}',
+          '[LinkQueue] ⏰ Slot ${widget.slotIndex} load timed out (30s): ${link.url}',
         );
         _finished = true;
         _viewTimer?.cancel();
+        _masterTimeout?.cancel();
         LinkQueueManager.instance.onSlotError(widget.slotIndex);
       }
     });
@@ -288,6 +292,7 @@ class _SlotWebViewState extends State<_SlotWebView> {
   void dispose() {
     _viewTimer?.cancel();
     _timeoutTimer?.cancel();
+    _masterTimeout?.cancel();
     super.dispose();
   }
 
@@ -296,9 +301,25 @@ class _SlotWebViewState extends State<_SlotWebView> {
     if (_finished) return;
     if (url == 'about:blank') return;
 
-    // Cancel the 30s timeout and any active view timers from previous redirects
+    // Cancel the 30s load timeout and any active view timers from previous redirects
     _timeoutTimer?.cancel();
     _viewTimer?.cancel();
+
+    // ── MASTER SAFETY-NET: 45s max from page-finished to slot completion ──
+    // This guarantees the slot is freed even if content checks hang,
+    // blank-page loops get stuck, or the view timer somehow fails.
+    _masterTimeout?.cancel();
+    _masterTimeout = Timer(const Duration(seconds: 45), () {
+      if (!_finished && mounted) {
+        debugPrint(
+          '[LinkQueue] 🛡️ Slot ${widget.slotIndex} master timeout (45s) — force-finishing: ${widget.activeLink?.url}',
+        );
+        _finished = true;
+        _viewTimer?.cancel();
+        _timeoutTimer?.cancel();
+        LinkQueueManager.instance.onSlotError(widget.slotIndex);
+      }
+    });
 
     _checkPageLoaded(url);
   }
@@ -367,10 +388,11 @@ class _SlotWebViewState extends State<_SlotWebView> {
             _timeoutTimer = Timer(const Duration(seconds: 30), () {
               if (!_finished && mounted) {
                 debugPrint(
-                  '[LinkQueue] ⏰ Slot ${widget.slotIndex} timed out (30s): ${widget.activeLink?.url}',
+                  '[LinkQueue] ⏰ Slot ${widget.slotIndex} timed out (30s) after blank reload: ${widget.activeLink?.url}',
                 );
                 _finished = true;
                 _viewTimer?.cancel();
+                _masterTimeout?.cancel();
                 LinkQueueManager.instance.onSlotError(widget.slotIndex);
               }
             });
@@ -382,9 +404,17 @@ class _SlotWebViewState extends State<_SlotWebView> {
             } catch (_) {}
             return;
           } else {
+            // BUG FIX: Previously this just logged "letting it time out" but
+            // there was NO timeout running (it was cancelled in onPageFinished).
+            // Now we immediately call onSlotError to free the slot.
             debugPrint(
-              '[LinkQueue] ⚠️ Slot ${widget.slotIndex} exhausted in-webview re-hits, letting it time out...',
+              '[LinkQueue] ⚠️ Slot ${widget.slotIndex} exhausted in-webview re-hits, force-erroring slot: ${widget.activeLink?.url}',
             );
+            _finished = true;
+            _viewTimer?.cancel();
+            _masterTimeout?.cancel();
+            LinkQueueManager.instance.onSlotError(widget.slotIndex);
+            return;
           }
         }
 
@@ -407,11 +437,13 @@ class _SlotWebViewState extends State<_SlotWebView> {
     }
 
     // Page has actual content — start the random 5–10s view timer
-    debugPrint('[LinkQueue] ✅ Slot ${widget.slotIndex} loaded content: $url');
+    debugPrint('[LinkQueue] ✅ Slot ${widget.slotIndex} loaded content: $url (viewing for ${LinkQueueManager.instance.randomViewDuration.inSeconds}s)');
     final duration = LinkQueueManager.instance.randomViewDuration;
     _viewTimer = Timer(duration, () {
       if (!_finished && mounted) {
+        debugPrint('[LinkQueue] ✅ Slot ${widget.slotIndex} view time elapsed — marking finished: $url');
         _finished = true;
+        _masterTimeout?.cancel();
         LinkQueueManager.instance.onSlotFinished(widget.slotIndex);
       }
     });
@@ -422,11 +454,12 @@ class _SlotWebViewState extends State<_SlotWebView> {
     if (_finished) return;
     if (error.isForMainFrame ?? false) {
       debugPrint(
-        '[LinkQueue] ❌ Slot ${widget.slotIndex} error: ${error.description}',
+        '[LinkQueue] ❌ Slot ${widget.slotIndex} main-frame error: ${error.description}',
       );
       _finished = true;
       _viewTimer?.cancel();
       _timeoutTimer?.cancel();
+      _masterTimeout?.cancel();
       LinkQueueManager.instance.onSlotError(widget.slotIndex);
     }
   }

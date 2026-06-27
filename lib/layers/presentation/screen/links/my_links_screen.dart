@@ -428,6 +428,23 @@ class MyLinksScreen extends StatelessWidget {
                 final newUrl = urlCtrl.text.trim();
                 if (newUrl.isEmpty) return;
 
+                // Validate URL format
+                final uri = Uri.tryParse(newUrl);
+                final isValidUrl = uri != null &&
+                    uri.hasScheme &&
+                    (uri.scheme == 'http' || uri.scheme == 'https') &&
+                    uri.host.isNotEmpty &&
+                    uri.host.contains('.');
+                if (!isValidUrl) {
+                  showToast(
+                    context: context,
+                    message:
+                        'Please enter a valid URL (e.g. https://example.com)',
+                    toastificationType: ToastificationType.error,
+                  );
+                  return;
+                }
+
                 if (!isEdit) {
                   final alreadyExists = currentLinks.any(
                     (l) => l.url == newUrl,

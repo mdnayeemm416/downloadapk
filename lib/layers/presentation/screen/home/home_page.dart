@@ -372,7 +372,7 @@ class _HomePageState extends State<HomePage> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 24),
                       child: Text(
-                        'Ad Network v1.0.7',
+                        'Ad Network v1.0.8',
                         style: getRegularStyle(
                           fontSize: 11,
                           color: cs.onSurface.withValues(alpha: .25),

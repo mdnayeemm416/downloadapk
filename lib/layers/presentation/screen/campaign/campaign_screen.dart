@@ -1829,6 +1829,20 @@ class _MyCampaignCard extends StatelessWidget {
                 Row(
                   children: [
                     Icon(
+                      Icons.favorite_rounded,
+                      size: 12,
+                      color: cs.error.withValues(alpha: .6),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${campaign.globalLikes}',
+                      style: getRegularStyle(
+                        fontSize: 11,
+                        color: cs.onSurface.withValues(alpha: .5),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Icon(
                       Icons.access_time_rounded,
                       size: 12,
                       color: cs.onSurface.withValues(alpha: .35),
