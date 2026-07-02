@@ -36,13 +36,13 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   late ScrollController _scrollController;
   Timer? _botTimer;
+  // ── Debounce timer for overlay opacity disk writes ──
+  Timer? _opacityDebounceTimer;
   bool _isAutoScrolling = false;
   int _currentTargetIndex = 0;
   bool _isProcessingTarget = false;
   final _pip = Pip();
-  bool _isPipActive = false;
   bool _isAutoLikeEnabled = false;
-  bool _showOpacitySlider = false;
 
   @override
   void initState() {
@@ -61,9 +61,14 @@ class _FeedScreenState extends State<FeedScreen> {
     webViewOverlayOpacityNotifier.value = opacity;
   }
 
-  Future<void> _saveOverlayOpacity(double opacity) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble('webview_overlay_opacity', opacity);
+  /// Debounced — only writes to disk 300ms after the user stops dragging
+  /// to avoid hammering SharedPreferences on every slider frame.
+  void _saveOverlayOpacityDebounced(double opacity) {
+    _opacityDebounceTimer?.cancel();
+    _opacityDebounceTimer = Timer(const Duration(milliseconds: 300), () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('webview_overlay_opacity', opacity);
+    });
   }
 
   Future<void> _loadAutoLikeStatus() async {
@@ -100,11 +105,7 @@ class _FeedScreenState extends State<FeedScreen> {
           PipStateChangedObserver(
             onPipStateChanged: (state, error) {
               if (mounted) {
-                final isActive = state == PipState.pipStateStarted;
-                setState(() {
-                  _isPipActive = isActive;
-                });
-                isPipModeNotifier.value = isActive;
+                isPipModeNotifier.value = state == PipState.pipStateStarted;
               }
             },
           ),
@@ -118,6 +119,7 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   void dispose() {
     _botTimer?.cancel();
+    _opacityDebounceTimer?.cancel();
     _scrollController.dispose();
     _pip.dispose();
     // Release wakelock when leaving the screen
@@ -150,7 +152,9 @@ class _FeedScreenState extends State<FeedScreen> {
 
   void _startBotTimer() {
     _botTimer?.cancel();
-    _botTimer = Timer.periodic(const Duration(milliseconds: 600), (timer) {
+    // Reduced from 600ms to 800ms — imperceptible difference but meaningfully
+    // less CPU pressure during prolonged auto-like sessions.
+    _botTimer = Timer.periodic(const Duration(milliseconds: 800), (timer) {
       if (!mounted || !_isAutoScrolling) {
         timer.cancel();
         return;
@@ -266,145 +270,173 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
+    // ── Scoped BlocBuilder: only rebuild when the fields that actually
+    //    control which top-level card is shown change, OR when the links
+    //    list / loading status changes.  Countdown-only ticks (every 1s)
+    //    will NOT reach child BlocBuilders that have their own buildWhen.
     return BlocBuilder<FeedBloc, FeedState>(
+      buildWhen: (prev, curr) =>
+          prev.status != curr.status ||
+          prev.links != curr.links ||
+          // Show/hide like-button cooldown countdown on cards
+          prev.likeCooldownSeconds != curr.likeCooldownSeconds ||
+          // Switch between the three top-level views
+          (prev.nextCooldownSeconds > 0) != (curr.nextCooldownSeconds > 0) ||
+          (prev.pageWaitSeconds > 0) != (curr.pageWaitSeconds > 0),
       builder: (context, state) {
         Widget content;
         // ── Next Button Cooldown Card (5m countdown) ──
         if (state.nextCooldownSeconds > 0) {
-          final mins = state.nextCooldownSeconds ~/ 60;
-          final secs = state.nextCooldownSeconds % 60;
-          final timeStr =
-              '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
-
-          content = Center(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 32),
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: cs.primaryContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: cs.primary.withValues(alpha: 0.15),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: cs.primary.withValues(alpha: 0.06),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: cs.primary.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
+          // Wrap in its own scoped BlocBuilder so only the time text
+          // rebuilds every second — the feed list is untouched.
+          content = BlocBuilder<FeedBloc, FeedState>(
+            buildWhen: (p, c) => p.nextCooldownSeconds != c.nextCooldownSeconds,
+            builder: (context, cdState) {
+              final mins = cdState.nextCooldownSeconds ~/ 60;
+              final secs = cdState.nextCooldownSeconds % 60;
+              final timeStr =
+                  '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+              return Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: cs.primary.withValues(alpha: 0.15),
+                      width: 1.5,
                     ),
-                    child: Icon(
-                      Icons.timer_outlined,
-                      color: cs.primary,
-                      size: 48,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    timeStr,
-                    style: getBoldStyle(fontSize: 40, color: cs.primary),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '৫ মিনিট পর আবার চেষ্টা করুন',
-                    style: getBoldStyle(fontSize: 18, color: cs.onSurface),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'নতুন বিজ্ঞাপন লোড হচ্ছে',
-                    style: getMediumStyle(
-                      fontSize: 14,
-                      color: cs.onSurface.withValues(alpha: 0.6),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          );
-        } else if (state.pageWaitSeconds > 0) {
-          content = Center(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 32),
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: cs.primaryContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: cs.primary.withValues(alpha: 0.15),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: cs.primary.withValues(alpha: 0.06),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Animated countdown circle
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      SizedBox(
-                        width: 80,
-                        height: 80,
-                        child: CircularProgressIndicator(
-                          value: state.pageWaitSeconds / 4.0,
-                          strokeWidth: 6,
-                          backgroundColor: cs.primary.withValues(alpha: 0.1),
-                          valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
-                          strokeCap: StrokeCap.round,
-                        ),
-                      ),
-                      Text(
-                        '${state.pageWaitSeconds}',
-                        style: getBoldStyle(fontSize: 32, color: cs.primary),
+                    boxShadow: [
+                      BoxShadow(
+                        color: cs.primary.withValues(alpha: 0.06),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'অপেক্ষা করুন...',
-                    style: getBoldStyle(fontSize: 20, color: cs.onSurface),
-                    textAlign: TextAlign.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.timer_outlined,
+                          color: cs.primary,
+                          size: 48,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        timeStr,
+                        style: getBoldStyle(fontSize: 40, color: cs.primary),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        '৫ মিনিট পর আবার চেষ্টা করুন',
+                        style: getBoldStyle(fontSize: 18, color: cs.onSurface),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'নতুন বিজ্ঞাপন লোড হচ্ছে',
+                        style: getMediumStyle(
+                          fontSize: 14,
+                          color: cs.onSurface.withValues(alpha: 0.6),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${state.pageWaitSeconds} সেকেন্ডে নতুন বিজ্ঞাপন লোড হচ্ছে',
-                    style: getMediumStyle(
-                      fontSize: 14,
-                      color: cs.onSurface.withValues(alpha: 0.6),
+                ),
+              );
+            },
+          );
+        } else if (state.pageWaitSeconds > 0) {
+          // Wrap in its own scoped BlocBuilder so only the countdown
+          // number rebuilds every second.
+          content = BlocBuilder<FeedBloc, FeedState>(
+            buildWhen: (p, c) => p.pageWaitSeconds != c.pageWaitSeconds,
+            builder: (context, pwState) {
+              return Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: cs.primary.withValues(alpha: 0.15),
+                      width: 1.5,
                     ),
-                    textAlign: TextAlign.center,
+                    boxShadow: [
+                      BoxShadow(
+                        color: cs.primary.withValues(alpha: 0.06),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'দয়া করে একটু ধৈর্য ধরুন 🙏',
-                    style: getRegularStyle(
-                      fontSize: 13,
-                      color: cs.onSurface.withValues(alpha: 0.45),
-                    ),
-                    textAlign: TextAlign.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Animated countdown circle
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 80,
+                            height: 80,
+                            child: CircularProgressIndicator(
+                              value: pwState.pageWaitSeconds / 4.0,
+                              strokeWidth: 6,
+                              backgroundColor: cs.primary.withValues(alpha: 0.1),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(cs.primary),
+                              strokeCap: StrokeCap.round,
+                            ),
+                          ),
+                          Text(
+                            '${pwState.pageWaitSeconds}',
+                            style:
+                                getBoldStyle(fontSize: 32, color: cs.primary),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'অপেক্ষা করুন...',
+                        style:
+                            getBoldStyle(fontSize: 20, color: cs.onSurface),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${pwState.pageWaitSeconds} সেকেন্ডে নতুন বিজ্ঞাপন লোড হচ্ছে',
+                        style: getMediumStyle(
+                          fontSize: 14,
+                          color: cs.onSurface.withValues(alpha: 0.6),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'দয়া করে একটু ধৈর্য ধরুন 🙏',
+                        style: getRegularStyle(
+                          fontSize: 13,
+                          color: cs.onSurface.withValues(alpha: 0.45),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           );
         } else if (state.status == FeedStatus.loading) {
           content = const Center(child: CircularProgressIndicator());
@@ -671,22 +703,26 @@ class _FeedScreenState extends State<FeedScreen> {
                   SliverList(
                     delegate: SliverChildBuilderDelegate((context, index) {
                       final link = state.links[index];
-                      return LinkPostCard(
-                        key: ValueKey(link.id ?? 'link_$index'),
-                        link: link,
-                        likeCooldownSeconds: state.likeCooldownSeconds,
-                        onLike: () {
-                          Future.microtask(() {
-                            if (context.mounted) {
-                              context.read<FeedBloc>().add(
-                                ToggleLike(link.id ?? ''),
-                              );
-                            }
-                          });
-                        },
-                        onUserTap: () => Navigator.of(context).pushNamed(
-                          '/user-profile',
-                          arguments: link.userId ?? '',
+                      // RepaintBoundary isolates each card's GPU layer so
+                      // parent rebuilds don't force every card to repaint.
+                      return RepaintBoundary(
+                        child: LinkPostCard(
+                          key: ValueKey(link.id ?? 'link_$index'),
+                          link: link,
+                          likeCooldownSeconds: state.likeCooldownSeconds,
+                          onLike: () {
+                            Future.microtask(() {
+                              if (context.mounted) {
+                                context.read<FeedBloc>().add(
+                                  ToggleLike(link.id ?? ''),
+                                );
+                              }
+                            });
+                          },
+                          onUserTap: () => Navigator.of(context).pushNamed(
+                            '/user-profile',
+                            arguments: link.userId ?? '',
+                          ),
                         ),
                       );
                     }, childCount: state.links.length),
@@ -1063,173 +1099,16 @@ class _FeedScreenState extends State<FeedScreen> {
                 Positioned(
                   right: 16,
                   bottom: 24,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (_showOpacitySlider) ...[
-                        Container(
-                          width: 220,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainerHigh.withValues(
-                              alpha: 0.95,
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: cs.primary.withValues(alpha: 0.3),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.2),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'White Overlay',
-                                    style: getBoldStyle(
-                                      fontSize: 12,
-                                      color: cs.onSurface,
-                                    ),
-                                  ),
-                                  ValueListenableBuilder<double>(
-                                    valueListenable:
-                                        webViewOverlayOpacityNotifier,
-                                    builder:
-                                        (context, val, _) => Text(
-                                          '${(val * 100).round()}%',
-                                          style: getBoldStyle(
-                                            fontSize: 12,
-                                            color: cs.primary,
-                                          ),
-                                        ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              ValueListenableBuilder<double>(
-                                valueListenable: webViewOverlayOpacityNotifier,
-                                builder: (context, val, _) {
-                                  return SliderTheme(
-                                    data: SliderTheme.of(context).copyWith(
-                                      trackHeight: 4,
-                                      thumbShape: const RoundSliderThumbShape(
-                                        enabledThumbRadius: 7,
-                                      ),
-                                    ),
-                                    child: Slider(
-                                      value: val,
-                                      min: 0.0,
-                                      max: 1.0,
-                                      activeColor: cs.primary,
-                                      onChanged: (newVal) {
-                                        webViewOverlayOpacityNotifier.value =
-                                            newVal;
-                                        _saveOverlayOpacity(newVal);
-                                      },
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      FloatingActionButton(
-                        heroTag: 'overlayBtn',
-                        onPressed: () {
-                          setState(() {
-                            _showOpacitySlider = !_showOpacitySlider;
-                          });
-                        },
-                        backgroundColor:
-                            _showOpacitySlider
-                                ? cs.primary
-                                : cs.surfaceContainerHigh,
-                        foregroundColor:
-                            _showOpacitySlider ? Colors.white : cs.onSurface,
-                        mini: true,
-                        tooltip: 'WebView White Overlay Density',
-                        child: const Icon(Icons.layers_outlined, size: 20),
-                      ),
-                      const SizedBox(height: 12),
-                      if (_isAutoScrolling) ...[
-                        FloatingActionButton(
-                          heroTag: 'pipBtn',
-                          onPressed: () async {
-                            try {
-                              final isSupported = await _pip.isSupported();
-                              if (isSupported) {
-                                await _pip.start();
-                              } else {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: const Text(
-                                        'PIP is not supported on this device',
-                                      ),
-                                      backgroundColor: cs.error,
-                                    ),
-                                  );
-                                }
-                              }
-                            } catch (e) {
-                              debugPrint('Failed to start PIP: $e');
-                            }
-                          },
-                          backgroundColor: Colors.blueAccent,
-                          foregroundColor: Colors.white,
-                          mini: true,
-                          child: const Icon(
-                            Icons.picture_in_picture_alt_rounded,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      FloatingActionButton.extended(
-                        heroTag: 'autoPlayBtn',
-                        onPressed: () {
-                          if (_isAutoLikeEnabled) {
-                            _toggleAutoPlay(state);
-                          } else {
-                            _showSubscriptionDialog(context);
-                          }
-                        },
-                        backgroundColor:
-                            _isAutoScrolling
-                                ? Colors.orange.shade700
-                                : cs.primary,
-                        foregroundColor: Colors.white,
-                        icon: Icon(
-                          _isAutoScrolling
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          size: 24,
-                        ),
-                        label: Text(
-                          _isAutoScrolling ? 'PAUSE' : 'AUTO PLAY',
-                          style: getBoldStyle(
-                            fontSize: 12,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
+                  // Extracted into its own StatefulWidget so toggling the
+                  // opacity slider or FAB state does NOT rebuild the
+                  // BLoC-driven feed tree above it.
+                  child: _FeedFabColumn(
+                    pip: _pip,
+                    isAutoScrolling: _isAutoScrolling,
+                    isAutoLikeEnabled: _isAutoLikeEnabled,
+                    onToggleAutoPlay: () => _toggleAutoPlay(state),
+                    onShowSubscription: () => _showSubscriptionDialog(context),
+                    saveOpacityDebounced: _saveOverlayOpacityDebounced,
                   ),
                 ),
             ],
@@ -1590,3 +1469,189 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 }
+
+// ── FAB Column extracted into its own StatefulWidget ──────────────────────
+// By isolating the opacity-slider toggle and auto-scroll FAB state here,
+// tapping the FAB or dragging the slider rebuilds ONLY this small widget
+// and never triggers a rebuild of the BLoC-driven feed list above.
+class _FeedFabColumn extends StatefulWidget {
+  final Pip pip;
+  final bool isAutoScrolling;
+  final bool isAutoLikeEnabled;
+  final VoidCallback onToggleAutoPlay;
+  final VoidCallback onShowSubscription;
+  final void Function(double) saveOpacityDebounced;
+
+  const _FeedFabColumn({
+    required this.pip,
+    required this.isAutoScrolling,
+    required this.isAutoLikeEnabled,
+    required this.onToggleAutoPlay,
+    required this.onShowSubscription,
+    required this.saveOpacityDebounced,
+  });
+
+  @override
+  State<_FeedFabColumn> createState() => _FeedFabColumnState();
+}
+
+class _FeedFabColumnState extends State<_FeedFabColumn> {
+  bool _showOpacitySlider = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // ── Opacity slider panel ──
+        if (_showOpacitySlider) ...[
+          Container(
+            width: 220,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHigh.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: cs.primary.withValues(alpha: 0.3)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'White Overlay',
+                      style: getBoldStyle(fontSize: 12, color: cs.onSurface),
+                    ),
+                    ValueListenableBuilder<double>(
+                      valueListenable: webViewOverlayOpacityNotifier,
+                      builder: (context, val, _) => Text(
+                        '${(val * 100).round()}%',
+                        style: getBoldStyle(fontSize: 12, color: cs.primary),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                ValueListenableBuilder<double>(
+                  valueListenable: webViewOverlayOpacityNotifier,
+                  builder: (context, val, _) {
+                    return SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 4,
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 7,
+                        ),
+                      ),
+                      child: Slider(
+                        value: val,
+                        min: 0.0,
+                        max: 1.0,
+                        activeColor: cs.primary,
+                        onChanged: (newVal) {
+                          webViewOverlayOpacityNotifier.value = newVal;
+                          // Debounced — only writes to disk after dragging stops
+                          widget.saveOpacityDebounced(newVal);
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // ── Overlay toggle FAB ──
+        FloatingActionButton(
+          heroTag: 'overlayBtn',
+          onPressed: () {
+            setState(() => _showOpacitySlider = !_showOpacitySlider);
+          },
+          backgroundColor:
+              _showOpacitySlider ? cs.primary : cs.surfaceContainerHigh,
+          foregroundColor: _showOpacitySlider ? Colors.white : cs.onSurface,
+          mini: true,
+          tooltip: 'WebView White Overlay Density',
+          child: const Icon(Icons.layers_outlined, size: 20),
+        ),
+        const SizedBox(height: 12),
+
+        // ── PIP button (only when auto-play is running) ──
+        if (widget.isAutoScrolling) ...[
+          FloatingActionButton(
+            heroTag: 'pipBtn',
+            onPressed: () async {
+              try {
+                final isSupported = await widget.pip.isSupported();
+                if (isSupported) {
+                  await widget.pip.start();
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text(
+                          'PIP is not supported on this device',
+                        ),
+                        backgroundColor:
+                            Theme.of(context).colorScheme.error,
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                debugPrint('Failed to start PIP: $e');
+              }
+            },
+            backgroundColor: Colors.blueAccent,
+            foregroundColor: Colors.white,
+            mini: true,
+            child: const Icon(
+              Icons.picture_in_picture_alt_rounded,
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // ── Auto Play / Pause FAB ──
+        FloatingActionButton.extended(
+          heroTag: 'autoPlayBtn',
+          onPressed: () {
+            if (widget.isAutoLikeEnabled) {
+              widget.onToggleAutoPlay();
+            } else {
+              widget.onShowSubscription();
+            }
+          },
+          backgroundColor:
+              widget.isAutoScrolling ? Colors.orange.shade700 : cs.primary,
+          foregroundColor: Colors.white,
+          icon: Icon(
+            widget.isAutoScrolling
+                ? Icons.pause_rounded
+                : Icons.play_arrow_rounded,
+            size: 24,
+          ),
+          label: Text(
+            widget.isAutoScrolling ? 'PAUSE' : 'AUTO PLAY',
+            style: getBoldStyle(fontSize: 12, color: Colors.white),
+          ),
+        ),
+      ],
+    );
+  }
+}
+

@@ -196,6 +196,10 @@ class _SlotWebViewState extends State<_SlotWebView> {
   int _inWebViewReloadCount = 0;
   String? _loadedUrl;
 
+  // Tracks total blank time across ALL redirects (not reset on onPageStarted)
+  // This prevents redirect chains from indefinitely resetting the blank timer.
+  int _totalBlankSeconds = 0;
+
   @override
   void initState() {
     super.initState();
@@ -210,9 +214,11 @@ class _SlotWebViewState extends State<_SlotWebView> {
                 _isLoading = true;
               });
             }
-            // Reset the countdown view timer on new page loads/redirects
+            // Cancel any pending view timer on new page loads/redirects
+            // but do NOT reset _blankSecondsCount — redirect chains should
+            // not restart the blank timer, otherwise a site with 10 redirects
+            // can stall the slot for 60+ seconds on a white screen.
             _viewTimer?.cancel();
-            _blankSecondsCount = 0;
           },
           onPageFinished: (String url) {
             if (mounted) {
@@ -274,11 +280,28 @@ class _SlotWebViewState extends State<_SlotWebView> {
     _finished = false;
     _isLoading = true;
     _blankSecondsCount = 0;
+    _totalBlankSeconds = 0;
     _inWebViewReloadCount = 0;
 
     _viewTimer?.cancel();
     _timeoutTimer?.cancel();
     _masterTimeout?.cancel();
+
+    // ── MASTER SAFETY-NET: 45s hard cap from the moment we start loading ──
+    // This runs immediately so it covers ALL phases: initial load, redirects,
+    // blank-screen loops, and re-hits. Even if every other timeout gets
+    // cancelled/reset, this one guarantees the slot is freed within 45s.
+    _masterTimeout = Timer(const Duration(seconds: 45), () {
+      if (!_finished && mounted) {
+        debugPrint(
+          '[LinkQueue] 🛡️ Slot ${widget.slotIndex} master timeout (45s from load start) — force-finishing: ${link.url}',
+        );
+        _finished = true;
+        _viewTimer?.cancel();
+        _timeoutTimer?.cancel();
+        LinkQueueManager.instance.onSlotError(widget.slotIndex);
+      }
+    });
 
     try {
       final uri = Uri.parse(link.url);
@@ -289,6 +312,7 @@ class _SlotWebViewState extends State<_SlotWebView> {
       );
       _finished = true;
       _isLoading = false;
+      _masterTimeout?.cancel();
       // Mark as error immediately so it's removed from queue
       WidgetsBinding.instance.addPostFrameCallback((_) {
         LinkQueueManager.instance.onSlotError(widget.slotIndex);
@@ -297,11 +321,11 @@ class _SlotWebViewState extends State<_SlotWebView> {
 
     debugPrint('[LinkQueue] ▶ Slot ${widget.slotIndex} loading: ${link.url}');
 
-    // ── HARD TIMEOUT: 30s max to load ──
-    _timeoutTimer = Timer(const Duration(seconds: 30), () {
+    // ── HARD TIMEOUT: 20s max to receive onPageFinished ──
+    _timeoutTimer = Timer(const Duration(seconds: 20), () {
       if (!_finished && mounted) {
         debugPrint(
-          '[LinkQueue] ⏰ Slot ${widget.slotIndex} load timed out (30s): ${link.url}',
+          '[LinkQueue] ⏰ Slot ${widget.slotIndex} load timed out (20s): ${link.url}',
         );
         _finished = true;
         _viewTimer?.cancel();
@@ -330,25 +354,10 @@ class _SlotWebViewState extends State<_SlotWebView> {
     if (_finished) return;
     if (url == 'about:blank') return;
 
-    // Cancel the 30s load timeout and any active view timers from previous redirects
+    // Cancel the load timeout — page has started responding.
+    // The master timeout (started at load begin) is still running as a hard cap.
     _timeoutTimer?.cancel();
     _viewTimer?.cancel();
-
-    // ── MASTER SAFETY-NET: 45s max from page-finished to slot completion ──
-    // This guarantees the slot is freed even if content checks hang,
-    // blank-page loops get stuck, or the view timer somehow fails.
-    _masterTimeout?.cancel();
-    _masterTimeout = Timer(const Duration(seconds: 45), () {
-      if (!_finished && mounted) {
-        debugPrint(
-          '[LinkQueue] 🛡️ Slot ${widget.slotIndex} master timeout (45s) — force-finishing: ${widget.activeLink?.url}',
-        );
-        _finished = true;
-        _viewTimer?.cancel();
-        _timeoutTimer?.cancel();
-        LinkQueueManager.instance.onSlotError(widget.slotIndex);
-      }
-    });
 
     _checkPageLoaded(url);
   }
@@ -404,38 +413,38 @@ class _SlotWebViewState extends State<_SlotWebView> {
 
       if (status == 'blank') {
         _blankSecondsCount++;
-        if (_blankSecondsCount >= 6) {
+        _totalBlankSeconds++;
+
+        // Hard cap: if the page has been blank for more than 10s total
+        // (across all redirects and reloads), give up immediately.
+        if (_totalBlankSeconds >= 10) {
+          debugPrint(
+            '[LinkQueue] ⚠️ Slot ${widget.slotIndex} blank for ${_totalBlankSeconds}s total, force-erroring: ${widget.activeLink?.url}',
+          );
+          _finished = true;
+          _viewTimer?.cancel();
+          _masterTimeout?.cancel();
+          LinkQueueManager.instance.onSlotError(widget.slotIndex);
+          return;
+        }
+
+        // Per-load threshold: 3s blank → try reloading (max 2 retries)
+        if (_blankSecondsCount >= 3) {
           if (_inWebViewReloadCount < 2) {
             _inWebViewReloadCount++;
             _blankSecondsCount = 0;
             debugPrint(
-              '[LinkQueue] 🔄 Slot ${widget.slotIndex} has been blank for 6s. Re-hitting link (attempt $_inWebViewReloadCount/2): ${widget.activeLink?.url}',
+              '[LinkQueue] 🔄 Slot ${widget.slotIndex} has been blank for 3s. Re-hitting link (attempt $_inWebViewReloadCount/2): ${widget.activeLink?.url}',
             );
 
-            // Reset the load timeout timer
-            _timeoutTimer?.cancel();
-            _timeoutTimer = Timer(const Duration(seconds: 30), () {
-              if (!_finished && mounted) {
-                debugPrint(
-                  '[LinkQueue] ⏰ Slot ${widget.slotIndex} timed out (30s) after blank reload: ${widget.activeLink?.url}',
-                );
-                _finished = true;
-                _viewTimer?.cancel();
-                _masterTimeout?.cancel();
-                LinkQueueManager.instance.onSlotError(widget.slotIndex);
-              }
-            });
-
             // Reload/re-hit the request in this webview
+            // The master timeout is still running — no need to reset a new timer.
             try {
               final uri = Uri.parse(widget.activeLink!.url);
               _controller.loadRequest(uri);
             } catch (_) {}
             return;
           } else {
-            // BUG FIX: Previously this just logged "letting it time out" but
-            // there was NO timeout running (it was cancelled in onPageFinished).
-            // Now we immediately call onSlotError to free the slot.
             debugPrint(
               '[LinkQueue] ⚠️ Slot ${widget.slotIndex} exhausted in-webview re-hits, force-erroring slot: ${widget.activeLink?.url}',
             );
