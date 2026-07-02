@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:adnetwork/core/services/link_queue_manager.dart';
+import 'package:adnetwork/layers/presentation/screen/feed/feed_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -65,82 +66,104 @@ class _SlotWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isActive = activeLink != null;
+    if (activeLink == null) {
+      return const SizedBox.shrink();
+    }
+
+    final String linkKeyStr = 'slot_${slotIndex}_${activeLink?.linkId ?? activeLink?.url}';
+
+    final Widget overlayWidget = ValueListenableBuilder<double>(
+      valueListenable: webViewOverlayOpacityNotifier,
+      builder: (context, opacity, child) {
+        if (opacity <= 0) return const SizedBox.shrink();
+        return Positioned.fill(
+          child: IgnorePointer(
+            child: Container(
+              color: Colors.white.withValues(alpha: opacity),
+            ),
+          ),
+        );
+      },
+    );
 
     if (isPipMode) {
       return Expanded(
-        child: Offstage(
-          offstage: !isActive,
-          child: _SlotWebView(
-            key: ValueKey('slot_$slotIndex'),
-            slotIndex: slotIndex,
-            activeLink: activeLink,
-          ),
+        child: Stack(
+          children: [
+            _SlotWebView(
+              key: ValueKey(linkKeyStr),
+              slotIndex: slotIndex,
+              activeLink: activeLink,
+            ),
+            overlayWidget,
+          ],
         ),
       );
     } else {
-      return Offstage(
-        offstage: !isActive,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: 80,
-          height: 142,
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-              width: 1.5,
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        width: 80,
+        height: 142,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10.5),
+          child: Stack(
+            children: [
+              FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  width: 360,
+                  height: 640,
+                  child: Stack(
+                    children: [
+                      _SlotWebView(
+                        key: ValueKey(linkKeyStr),
+                        slotIndex: slotIndex,
+                        activeLink: activeLink,
+                      ),
+                      overlayWidget,
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 4,
+                left: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(
+                      alpha: 0.65,
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Slot ${slotIndex + 1}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
             ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10.5),
-            child: Stack(
-              children: [
-                FittedBox(
-                  fit: BoxFit.contain,
-                  child: SizedBox(
-                    width: 360,
-                    height: 640,
-                    child: _SlotWebView(
-                      key: ValueKey('slot_$slotIndex'),
-                      slotIndex: slotIndex,
-                      activeLink: activeLink,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 4,
-                  left: 4,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(
-                        alpha: 0.65,
-                      ),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'Slot ${slotIndex + 1}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       );
@@ -293,6 +316,12 @@ class _SlotWebViewState extends State<_SlotWebView> {
     _viewTimer?.cancel();
     _timeoutTimer?.cancel();
     _masterTimeout?.cancel();
+    if (!_finished && widget.activeLink != null) {
+      final slotIndex = widget.slotIndex;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        LinkQueueManager.instance.onSlotError(slotIndex);
+      });
+    }
     super.dispose();
   }
 

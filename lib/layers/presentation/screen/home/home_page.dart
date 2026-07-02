@@ -54,8 +54,6 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final profileState = context.watch<ProfileBloc>().state;
-    final user = profileState.currentUser;
 
     final linkRepo = context.read<LinkRepository>();
 
@@ -87,8 +85,11 @@ class _HomePageState extends State<HomePage> {
             drawer: Drawer(
               backgroundColor: cs.surface,
               child: SafeArea(
-                child: Column(
-                  children: [
+                child: BlocBuilder<ProfileBloc, ProfileState>(
+                  builder: (context, profileState) {
+                    final user = profileState.currentUser;
+                    return Column(
+                      children: [
                     // ── Premium gradient header ──
                     Container(
                       width: double.infinity,
@@ -380,9 +381,11 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ],
-                ),
-              ),
+                );
+              },
             ),
+          ),
+        ),
             body: SafeArea(
               child: ValueListenableBuilder<bool>(
                 valueListenable: isPipModeNotifier,

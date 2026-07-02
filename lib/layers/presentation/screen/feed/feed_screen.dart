@@ -17,10 +17,14 @@ import 'package:adnetwork/layers/dto/api_response.dart';
 
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'package:wakelock_plus/wakelock_plus.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pip/pip.dart';
 
 final ValueNotifier<bool> isPipModeNotifier = ValueNotifier(false);
+final ValueNotifier<double> webViewOverlayOpacityNotifier = ValueNotifier(0.0);
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -35,10 +39,10 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _isAutoScrolling = false;
   int _currentTargetIndex = 0;
   bool _isProcessingTarget = false;
-  final Map<int, GlobalKey> _cardKeys = {};
   final _pip = Pip();
   bool _isPipActive = false;
   bool _isAutoLikeEnabled = false;
+  bool _showOpacitySlider = false;
 
   @override
   void initState() {
@@ -46,6 +50,20 @@ class _FeedScreenState extends State<FeedScreen> {
     _scrollController = ScrollController();
     _initPip();
     _loadAutoLikeStatus();
+    _loadOverlayOpacity();
+    // Keep screen awake while app is in foreground
+    WakelockPlus.enable();
+  }
+
+  Future<void> _loadOverlayOpacity() async {
+    final prefs = await SharedPreferences.getInstance();
+    final opacity = prefs.getDouble('webview_overlay_opacity') ?? 0.0;
+    webViewOverlayOpacityNotifier.value = opacity;
+  }
+
+  Future<void> _saveOverlayOpacity(double opacity) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('webview_overlay_opacity', opacity);
   }
 
   Future<void> _loadAutoLikeStatus() async {
@@ -102,6 +120,8 @@ class _FeedScreenState extends State<FeedScreen> {
     _botTimer?.cancel();
     _scrollController.dispose();
     _pip.dispose();
+    // Release wakelock when leaving the screen
+    WakelockPlus.disable();
     super.dispose();
   }
 
@@ -109,7 +129,6 @@ class _FeedScreenState extends State<FeedScreen> {
     setState(() {
       _isAutoScrolling = !_isAutoScrolling;
       _isProcessingTarget = false;
-      _cardKeys.clear();
       if (_isAutoScrolling) {
         _currentTargetIndex = 0;
         _scrollToIndex(0);
@@ -131,7 +150,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   void _startBotTimer() {
     _botTimer?.cancel();
-    _botTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+    _botTimer = Timer.periodic(const Duration(milliseconds: 600), (timer) {
       if (!mounted || !_isAutoScrolling) {
         timer.cancel();
         return;
@@ -161,7 +180,6 @@ class _FeedScreenState extends State<FeedScreen> {
       if (link.isLiked) {
         _currentTargetIndex++;
         if (_currentTargetIndex >= state.links.length) {
-          _cardKeys.clear();
           _currentTargetIndex = 0;
           feedBloc.add(ChangeFeedPage(state.currentPage + 1));
         } else {
@@ -203,7 +221,6 @@ class _FeedScreenState extends State<FeedScreen> {
             if (context.mounted) {
               // when index end then call next page
               if (_currentTargetIndex == state.links.length - 1) {
-                _cardKeys.clear();
                 feedBloc.add(ChangeFeedPage(state.currentPage + 1));
                 setState(() {
                   _currentTargetIndex = 0;
@@ -236,23 +253,12 @@ class _FeedScreenState extends State<FeedScreen> {
 
   void _scrollToIndex(int index) {
     if (_scrollController.hasClients) {
-      final key = _cardKeys[index];
-      if (key?.currentContext != null) {
-        Scrollable.ensureVisible(
-          key!.currentContext!,
-          duration: const Duration(milliseconds: 800),
-          alignment: 0.1, // Align near the top of the viewport
-          curve: Curves.easeInOut,
-        );
-      } else {
-        // Fallback to offset-based scroll with human-like height per card
-        final double targetOffset = 50.0 + (index * 320.0);
-        _scrollController.animateTo(
-          targetOffset,
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.easeInOut,
-        );
-      }
+      final double targetOffset = 50.0 + (index * 280.0);
+      _scrollController.animateTo(
+        targetOffset,
+        duration: const Duration(milliseconds: 800),
+        curve: Curves.easeInOut,
+      );
     }
   }
 
@@ -665,12 +671,8 @@ class _FeedScreenState extends State<FeedScreen> {
                   SliverList(
                     delegate: SliverChildBuilderDelegate((context, index) {
                       final link = state.links[index];
-                      final cardKey = _cardKeys.putIfAbsent(
-                        index,
-                        () => GlobalKey(),
-                      );
                       return LinkPostCard(
-                        key: cardKey,
+                        key: ValueKey(link.id ?? 'link_$index'),
                         link: link,
                         likeCooldownSeconds: state.likeCooldownSeconds,
                         onLike: () {
@@ -1065,6 +1067,106 @@ class _FeedScreenState extends State<FeedScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
+                      if (_showOpacitySlider) ...[
+                        Container(
+                          width: 220,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cs.surfaceContainerHigh.withValues(
+                              alpha: 0.95,
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: cs.primary.withValues(alpha: 0.3),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'White Overlay',
+                                    style: getBoldStyle(
+                                      fontSize: 12,
+                                      color: cs.onSurface,
+                                    ),
+                                  ),
+                                  ValueListenableBuilder<double>(
+                                    valueListenable:
+                                        webViewOverlayOpacityNotifier,
+                                    builder:
+                                        (context, val, _) => Text(
+                                          '${(val * 100).round()}%',
+                                          style: getBoldStyle(
+                                            fontSize: 12,
+                                            color: cs.primary,
+                                          ),
+                                        ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              ValueListenableBuilder<double>(
+                                valueListenable: webViewOverlayOpacityNotifier,
+                                builder: (context, val, _) {
+                                  return SliderTheme(
+                                    data: SliderTheme.of(context).copyWith(
+                                      trackHeight: 4,
+                                      thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 7,
+                                      ),
+                                    ),
+                                    child: Slider(
+                                      value: val,
+                                      min: 0.0,
+                                      max: 1.0,
+                                      activeColor: cs.primary,
+                                      onChanged: (newVal) {
+                                        webViewOverlayOpacityNotifier.value =
+                                            newVal;
+                                        _saveOverlayOpacity(newVal);
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      FloatingActionButton(
+                        heroTag: 'overlayBtn',
+                        onPressed: () {
+                          setState(() {
+                            _showOpacitySlider = !_showOpacitySlider;
+                          });
+                        },
+                        backgroundColor:
+                            _showOpacitySlider
+                                ? cs.primary
+                                : cs.surfaceContainerHigh,
+                        foregroundColor:
+                            _showOpacitySlider ? Colors.white : cs.onSurface,
+                        mini: true,
+                        tooltip: 'WebView White Overlay Density',
+                        child: const Icon(Icons.layers_outlined, size: 20),
+                      ),
+                      const SizedBox(height: 12),
                       if (_isAutoScrolling) ...[
                         FloatingActionButton(
                           heroTag: 'pipBtn',
@@ -1108,9 +1210,10 @@ class _FeedScreenState extends State<FeedScreen> {
                             _showSubscriptionDialog(context);
                           }
                         },
-                        backgroundColor: _isAutoScrolling
-                            ? Colors.orange.shade700
-                            : cs.primary,
+                        backgroundColor:
+                            _isAutoScrolling
+                                ? Colors.orange.shade700
+                                : cs.primary,
                         foregroundColor: Colors.white,
                         icon: Icon(
                           _isAutoScrolling

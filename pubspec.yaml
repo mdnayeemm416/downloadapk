@@ -51,6 +51,7 @@ dependencies:
   open_filex: ^4.7.0
   pip: ^0.0.3
   flutter_custom_tabs: ^2.5.0
+  wakelock_plus: ^1.2.10
 
 dev_dependencies:
   flutter_test:
