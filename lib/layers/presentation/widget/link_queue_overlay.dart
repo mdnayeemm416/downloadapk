@@ -192,13 +192,7 @@ class _SlotWebViewState extends State<_SlotWebView> {
   Timer? _masterTimeout; // Safety-net: guarantees slot is freed no matter what
   bool _isLoading = false;
   bool _finished = false;
-  int _blankSecondsCount = 0;
-  int _inWebViewReloadCount = 0;
   String? _loadedUrl;
-
-  // Tracks total blank time across ALL redirects (not reset on onPageStarted)
-  // This prevents redirect chains from indefinitely resetting the blank timer.
-  int _totalBlankSeconds = 0;
 
   @override
   void initState() {
@@ -215,9 +209,6 @@ class _SlotWebViewState extends State<_SlotWebView> {
               });
             }
             // Cancel any pending view timer on new page loads/redirects
-            // but do NOT reset _blankSecondsCount — redirect chains should
-            // not restart the blank timer, otherwise a site with 10 redirects
-            // can stall the slot for 60+ seconds on a white screen.
             _viewTimer?.cancel();
           },
           onPageFinished: (String url) {
@@ -279,9 +270,6 @@ class _SlotWebViewState extends State<_SlotWebView> {
     _loadedUrl = link.url;
     _finished = false;
     _isLoading = true;
-    _blankSecondsCount = 0;
-    _totalBlankSeconds = 0;
-    _inWebViewReloadCount = 0;
 
     _viewTimer?.cancel();
     _timeoutTimer?.cancel();
@@ -386,15 +374,6 @@ class _SlotWebViewState extends State<_SlotWebView> {
           ) {
             return 'error';
           }
-
-          var text = (document.body ? document.body.innerText || '' : '').trim();
-          var hasImages = document.getElementsByTagName('img').length > 0;
-          var hasIframes = document.getElementsByTagName('iframe').length > 0;
-          var hasLinks = document.getElementsByTagName('a').length > 0;
-
-          if (text.length === 0 && !hasImages && !hasIframes && !hasLinks) {
-            return 'blank';
-          }
           return 'ok';
         })();
       ''');
@@ -407,66 +386,8 @@ class _SlotWebViewState extends State<_SlotWebView> {
         );
         _finished = true;
         _viewTimer?.cancel();
+        _masterTimeout?.cancel();
         LinkQueueManager.instance.onSlotError(widget.slotIndex);
-        return;
-      }
-
-      if (status == 'blank') {
-        _blankSecondsCount++;
-        _totalBlankSeconds++;
-
-        // Hard cap: if the page has been blank for more than 10s total
-        // (across all redirects and reloads), give up immediately.
-        if (_totalBlankSeconds >= 10) {
-          debugPrint(
-            '[LinkQueue] ⚠️ Slot ${widget.slotIndex} blank for ${_totalBlankSeconds}s total, force-erroring: ${widget.activeLink?.url}',
-          );
-          _finished = true;
-          _viewTimer?.cancel();
-          _masterTimeout?.cancel();
-          LinkQueueManager.instance.onSlotError(widget.slotIndex);
-          return;
-        }
-
-        // Per-load threshold: 3s blank → try reloading (max 2 retries)
-        if (_blankSecondsCount >= 3) {
-          if (_inWebViewReloadCount < 2) {
-            _inWebViewReloadCount++;
-            _blankSecondsCount = 0;
-            debugPrint(
-              '[LinkQueue] 🔄 Slot ${widget.slotIndex} has been blank for 3s. Re-hitting link (attempt $_inWebViewReloadCount/2): ${widget.activeLink?.url}',
-            );
-
-            // Reload/re-hit the request in this webview
-            // The master timeout is still running — no need to reset a new timer.
-            try {
-              final uri = Uri.parse(widget.activeLink!.url);
-              _controller.loadRequest(uri);
-            } catch (_) {}
-            return;
-          } else {
-            debugPrint(
-              '[LinkQueue] ⚠️ Slot ${widget.slotIndex} exhausted in-webview re-hits, force-erroring slot: ${widget.activeLink?.url}',
-            );
-            _finished = true;
-            _viewTimer?.cancel();
-            _masterTimeout?.cancel();
-            LinkQueueManager.instance.onSlotError(widget.slotIndex);
-            return;
-          }
-        }
-
-        debugPrint(
-          '[LinkQueue] ⏳ Slot ${widget.slotIndex} is still blank/white screen ($_blankSecondsCount/6s before re-hit), retrying check in 1s...',
-        );
-        _viewTimer = Timer(
-          const Duration(seconds: 1),
-          () {
-            if (mounted) {
-              _checkPageLoaded(url);
-            }
-          },
-        );
         return;
       }
     } catch (_) {
@@ -474,7 +395,7 @@ class _SlotWebViewState extends State<_SlotWebView> {
       // Treat as success so we don't get stuck in a loop.
     }
 
-    // Page has actual content — start the random 5–10s view timer
+    // Page has actual content (or blank screen which we do not retry) — start the random 5–10s view timer
     debugPrint('[LinkQueue] ✅ Slot ${widget.slotIndex} loaded content: $url (viewing for ${LinkQueueManager.instance.randomViewDuration.inSeconds}s)');
     final duration = LinkQueueManager.instance.randomViewDuration;
     _viewTimer = Timer(duration, () {
