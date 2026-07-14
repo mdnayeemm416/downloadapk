@@ -1,6 +1,7 @@
 import 'package:adnetwork/config/theme/routes_config.dart';
 import 'package:adnetwork/config/theme/theme_manager.dart';
 import 'package:adnetwork/core/services/link_queue_manager.dart';
+import 'package:adnetwork/core/services/mobile_config_manager.dart';
 import 'package:adnetwork/layers/data/repo/remote/auth_repository.dart';
 import 'package:adnetwork/layers/data/repo/remote/link_repository.dart';
 import 'package:adnetwork/layers/data/repo/remote/user_repository.dart';
@@ -13,6 +14,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await MobileConfigManager.instance.init();
   await LinkQueueManager.instance.init();
   runApp(const MyApp());
 }

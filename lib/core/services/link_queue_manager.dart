@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:adnetwork/core/services/mobile_config_manager.dart';
 
 /// Represents a link currently being loaded in one of the 4 WebView slots.
 class ActiveLink {
@@ -47,7 +48,7 @@ class ActiveLink {
 ///   (not iframes), avoiding X-Frame-Options / CSP restrictions.
 /// - After each page loads, it stays for 5–10 seconds (random),
 ///   then the slot moves to the next URL in the queue.
-/// - If a page fails to load, it retries up to 1 time before dropping.
+/// - If a page fails to load, it is dropped immediately without retries.
 /// - All state is persisted to SharedPreferences.
 /// - When a slot finishes viewing, the associated linkId is emitted on
 ///   [completedLinkStream] so the like API can be called at that point.
@@ -58,7 +59,7 @@ class LinkQueueManager {
   static const _pendingKey = 'link_queue_pending';
   static const _activeKey = 'link_queue_active';
   static const int maxSlots = 3;
-  static const int maxRetries = 1;
+  static const int maxRetries = 0;
 
   late SharedPreferences _prefs;
   final _random = Random();
@@ -91,8 +92,16 @@ class LinkQueueManager {
   /// Whether there are any links to process.
   bool get hasWork => _slots.any((s) => s != null) || _pending.isNotEmpty;
 
-  /// Generate a random delay between 5-10 seconds for page viewing.
-  Duration get randomViewDuration => Duration(seconds: 5 + _random.nextInt(11));
+  /// Generate a random delay for page viewing based on the mobile config.
+  Duration get randomViewDuration {
+    final minS = int.tryParse(MobileConfigManager.instance.config.minAdsTime) ?? 10;
+    final maxS = int.tryParse(MobileConfigManager.instance.config.maxAdsTime) ?? 15;
+    if (maxS <= minS) {
+      return Duration(seconds: minS);
+    }
+    final range = maxS - minS + 1;
+    return Duration(seconds: minS + _random.nextInt(range));
+  }
 
   /// Initialize from SharedPreferences cache on app start.
   Future<void> init() async {

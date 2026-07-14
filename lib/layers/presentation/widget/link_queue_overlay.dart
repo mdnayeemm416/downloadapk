@@ -70,7 +70,8 @@ class _SlotWrapper extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final String linkKeyStr = 'slot_${slotIndex}_${activeLink?.linkId ?? activeLink?.url}';
+    final String linkKeyStr =
+        'slot_${slotIndex}_${activeLink?.linkId ?? activeLink?.url}';
 
     final Widget overlayWidget = ValueListenableBuilder<double>(
       valueListenable: webViewOverlayOpacityNotifier,
@@ -78,9 +79,7 @@ class _SlotWrapper extends StatelessWidget {
         if (opacity <= 0) return const SizedBox.shrink();
         return Positioned.fill(
           child: IgnorePointer(
-            child: Container(
-              color: Colors.white.withValues(alpha: opacity),
-            ),
+            child: Container(color: Colors.white.withValues(alpha: opacity)),
           ),
         );
       },
@@ -88,21 +87,28 @@ class _SlotWrapper extends StatelessWidget {
 
     if (isPipMode) {
       return Expanded(
-        child: Stack(
-          children: [
-            _SlotWebView(
-              key: ValueKey(linkKeyStr),
-              slotIndex: slotIndex,
-              activeLink: activeLink,
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height - 120,
+            child: Stack(
+              children: [
+                _SlotWebView(
+                  key: ValueKey(linkKeyStr),
+                  slotIndex: slotIndex,
+                  activeLink: activeLink,
+                ),
+                overlayWidget,
+              ],
             ),
-            overlayWidget,
-          ],
+          ),
         ),
       );
     } else {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        width: 80,
+        width: 75,
         height: 142,
         decoration: BoxDecoration(
           border: Border.all(
@@ -125,8 +131,8 @@ class _SlotWrapper extends StatelessWidget {
               FittedBox(
                 fit: BoxFit.contain,
                 child: SizedBox(
-                  width: 360,
-                  height: 640,
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height - 120,
                   child: Stack(
                     children: [
                       _SlotWebView(
@@ -148,9 +154,7 @@ class _SlotWrapper extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(
-                      alpha: 0.65,
-                    ),
+                    color: Colors.black.withValues(alpha: 0.65),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -395,12 +399,15 @@ class _SlotWebViewState extends State<_SlotWebView> {
       // Treat as success so we don't get stuck in a loop.
     }
 
-    // Page has actual content (or blank screen which we do not retry) — start the random 5–10s view timer
-    debugPrint('[LinkQueue] ✅ Slot ${widget.slotIndex} loaded content: $url (viewing for ${LinkQueueManager.instance.randomViewDuration.inSeconds}s)');
     final duration = LinkQueueManager.instance.randomViewDuration;
+    debugPrint(
+      '[LinkQueue] ✅ Slot ${widget.slotIndex} loaded content: $url (viewing for ${duration.inSeconds}s)',
+    );
     _viewTimer = Timer(duration, () {
       if (!_finished && mounted) {
-        debugPrint('[LinkQueue] ✅ Slot ${widget.slotIndex} view time elapsed — marking finished: $url');
+        debugPrint(
+          '[LinkQueue] ✅ Slot ${widget.slotIndex} view time elapsed — marking finished: $url',
+        );
         _finished = true;
         _masterTimeout?.cancel();
         LinkQueueManager.instance.onSlotFinished(widget.slotIndex);

@@ -74,7 +74,7 @@ class ApiClient {
       final response = await _client.get(
         _uri(path, queryParams: queryParams),
         headers: await _headers(auth: auth),
-      );
+      ).timeout(const Duration(seconds: 15));
       return _parse<T>(response, fromJsonModel);
     } on SocketException {
       return ApiResponse<T>(message: 'No internet connection');
@@ -95,7 +95,7 @@ class ApiClient {
         _uri(path),
         headers: await _headers(auth: auth),
         body: body != null ? jsonEncode(body) : null,
-      );
+      ).timeout(const Duration(seconds: 15));
       return _parse<T>(response, fromJsonModel);
     } on SocketException {
       return ApiResponse<T>(message: 'No internet connection');
@@ -116,7 +116,7 @@ class ApiClient {
         _uri(path),
         headers: await _headers(auth: auth),
         body: body != null ? jsonEncode(body) : null,
-      );
+      ).timeout(const Duration(seconds: 15));
       return _parse<T>(response, fromJsonModel);
     } on SocketException {
       return ApiResponse<T>(message: 'No internet connection');
@@ -135,7 +135,7 @@ class ApiClient {
       final response = await _client.delete(
         _uri(path),
         headers: await _headers(auth: auth),
-      );
+      ).timeout(const Duration(seconds: 15));
       return _parse<T>(response, fromJsonModel);
     } on SocketException {
       return ApiResponse<T>(message: 'No internet connection');

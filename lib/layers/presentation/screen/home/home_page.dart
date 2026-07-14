@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:adnetwork/config/theme/styles_manager.dart';
 import 'package:adnetwork/core/services/token_storage.dart';
 import 'package:adnetwork/core/services/vpn_dns_checker.dart';
+import 'package:adnetwork/core/services/mobile_config_manager.dart';
+import 'package:adnetwork/core/services/app_update_service.dart';
 import 'package:adnetwork/layers/data/repo/remote/link_repository.dart';
 import 'package:adnetwork/layers/data/repo/remote/user_repository.dart';
 import 'package:adnetwork/layers/presentation/controller/feed/feed_bloc.dart';
@@ -52,6 +54,8 @@ class _HomePageState extends State<HomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<ProfileBloc>().add(const LoadProfileStats());
+        // Run update check in the background after login/navigation
+        AppUpdateService.checkAndShowUpdate(context);
       }
     });
     _startVpnDnsCheck();
@@ -73,6 +77,18 @@ class _HomePageState extends State<HomePage> {
     _vpnDnsCheckTimer = Timer.periodic(const Duration(seconds: 2), (
       timer,
     ) async {
+      final allowDns = MobileConfigManager.instance.config.allowDns;
+      if (allowDns != "1") {
+        if (_isDialogShowing && _dialogContext != null) {
+          try {
+            Navigator.of(_dialogContext!).pop();
+          } catch (_) {}
+          _isDialogShowing = false;
+          _dialogContext = null;
+        }
+        return;
+      }
+
       final isVpn = await VpnDnsChecker.isVpnActive();
       final isDns = await VpnDnsChecker.isPrivateDnsActive();
 
@@ -505,7 +521,7 @@ class _HomePageState extends State<HomePage> {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 24),
                           child: Text(
-                            'Ad Network v1.0.11',
+                            'Ad Network v1.0.12',
                             style: getRegularStyle(
                               fontSize: 11,
                               color: cs.onSurface.withValues(alpha: .25),

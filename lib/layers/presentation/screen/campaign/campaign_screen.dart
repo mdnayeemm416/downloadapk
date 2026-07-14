@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:adnetwork/config/theme/styles_manager.dart';
 import 'package:adnetwork/core/extensions/extension.dart';
+import 'package:adnetwork/core/services/mobile_config_manager.dart';
 import 'package:adnetwork/layers/data/model/campaign_link_model.dart';
 import 'package:adnetwork/layers/presentation/controller/campaign/campaign_bloc.dart';
 import 'package:adnetwork/layers/presentation/controller/profile/profile_bloc.dart';
@@ -39,6 +39,7 @@ class _CampaignScreenState extends State<CampaignScreen>
   @override
   void initState() {
     super.initState();
+    _activeAdDuration = int.tryParse(MobileConfigManager.instance.config.campaignSeconds) ?? 20;
     _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addObserver(this);
 
@@ -91,9 +92,8 @@ class _CampaignScreenState extends State<CampaignScreen>
   }
 
   Future<void> _launchAd(CampaignLinkModel campaign) async {
-    final random = Random();
     final adDuration =
-        10 + random.nextInt(6); // random number between 10 and 15 inclusive
+        int.tryParse(MobileConfigManager.instance.config.campaignSeconds) ?? 20;
     final double height = MediaQuery.of(context).size.height;
 
     setState(() {
@@ -1275,7 +1275,7 @@ class _CampaignFeedCard extends StatelessWidget {
           const SizedBox(height: 16),
           // Yield explanation content
           Text(
-            'Launch this campaign task and watch the sponsor ad for 8-15 seconds to receive your yield score credit. The tab will automatically close on completion.',
+            'Launch this campaign task and watch the sponsor ad for ${MobileConfigManager.instance.config.campaignSeconds} seconds to receive your yield score credit. The tab will automatically close on completion.',
             style: getRegularStyle(
               fontSize: 12,
               color: cs.onSurface.withValues(alpha: .6),

@@ -1,4 +1,5 @@
 import 'package:adnetwork/core/services/token_storage.dart';
+import 'package:adnetwork/core/services/mobile_config_manager.dart';
 import 'package:adnetwork/layers/data/repo/remote/auth_repository.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
@@ -101,6 +102,13 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
           } catch (e) {
             debugPrint('login_bloc: Error checking subscription: $e');
           }
+        }
+
+        // Fetch mobile config from API and cache it on login success
+        try {
+          await MobileConfigManager.instance.fetchAndCacheConfig();
+        } catch (e) {
+          debugPrint('login_bloc: Error fetching mobile config: $e');
         }
 
         emit(state.copyWith(status: LoginStatus.success));
