@@ -16,9 +16,9 @@ class ApiClient {
   ApiClient._();
   static final ApiClient instance = ApiClient._();
 
-  final HttpWithMiddleware _client = HttpWithMiddleware.build(middlewares: [
-    if (!kReleaseMode) HttpLogger(logLevel: LogLevel.BODY),
-  ]);
+  final HttpWithMiddleware _client = HttpWithMiddleware.build(
+    middlewares: [if (!kReleaseMode) HttpLogger(logLevel: LogLevel.BODY)],
+  );
 
   // ─────────────────── Helpers ───────────────────
 
@@ -71,10 +71,12 @@ class ApiClient {
     bool auth = true,
   }) async {
     try {
-      final response = await _client.get(
-        _uri(path, queryParams: queryParams),
-        headers: await _headers(auth: auth),
-      ).timeout(const Duration(seconds: 15));
+      final response = await _client
+          .get(
+            _uri(path, queryParams: queryParams),
+            headers: await _headers(auth: auth),
+          )
+          .timeout(const Duration(seconds: 30));
       return _parse<T>(response, fromJsonModel);
     } on SocketException {
       return ApiResponse<T>(message: 'No internet connection');
@@ -91,11 +93,13 @@ class ApiClient {
     bool auth = true,
   }) async {
     try {
-      final response = await _client.post(
-        _uri(path),
-        headers: await _headers(auth: auth),
-        body: body != null ? jsonEncode(body) : null,
-      ).timeout(const Duration(seconds: 15));
+      final response = await _client
+          .post(
+            _uri(path),
+            headers: await _headers(auth: auth),
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(const Duration(seconds: 30));
       return _parse<T>(response, fromJsonModel);
     } on SocketException {
       return ApiResponse<T>(message: 'No internet connection');
@@ -112,11 +116,13 @@ class ApiClient {
     bool auth = true,
   }) async {
     try {
-      final response = await _client.patch(
-        _uri(path),
-        headers: await _headers(auth: auth),
-        body: body != null ? jsonEncode(body) : null,
-      ).timeout(const Duration(seconds: 15));
+      final response = await _client
+          .patch(
+            _uri(path),
+            headers: await _headers(auth: auth),
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(const Duration(seconds: 30));
       return _parse<T>(response, fromJsonModel);
     } on SocketException {
       return ApiResponse<T>(message: 'No internet connection');
@@ -132,10 +138,9 @@ class ApiClient {
     bool auth = true,
   }) async {
     try {
-      final response = await _client.delete(
-        _uri(path),
-        headers: await _headers(auth: auth),
-      ).timeout(const Duration(seconds: 15));
+      final response = await _client
+          .delete(_uri(path), headers: await _headers(auth: auth))
+          .timeout(const Duration(seconds: 30));
       return _parse<T>(response, fromJsonModel);
     } on SocketException {
       return ApiResponse<T>(message: 'No internet connection');

@@ -9,5 +9,5 @@ class EnvConfig {
       ? baseUrlProd
       : baseUrlLocal;
   static const String baseUrlLocal = "http://192.168.100.119:3000";
-  static const String baseUrlProd = "https://adnetwork.com.smartermed.xyz";
+  static const String baseUrlProd = "http://adapi.smartermed.xyz";
 }
